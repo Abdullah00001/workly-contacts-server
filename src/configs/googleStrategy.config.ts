@@ -40,6 +40,7 @@ passport.use(
         const newUser: IUserPayload = {
           avatar: avatar as IImage,
           email,
+          password: { secret: null, change_at: null },
           name,
           isVerified: true,
           provider: AuthType.GOOGLE,

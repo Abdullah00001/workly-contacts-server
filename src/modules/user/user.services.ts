@@ -353,7 +353,7 @@ const UserServices = {
     isVerified,
   }: IResetPasswordServicePayload): Promise<IResetPasswordServiceReturnPayload> => {
     try {
-      const hashed = (await hashPassword(password)) as string;
+      const hashed = (await hashPassword(password.secret)) as string;
       const newAccessToken = generateAccessToken({
         email,
         isVerified,
@@ -368,7 +368,7 @@ const UserServices = {
         name,
       }) as string;
       await Promise.all([
-        resetPassword({ userId, password: hashed }),
+        resetPassword({ userId, password: { ...password, secret: hashed } }),
         redisClient.set(
           `blacklist:recover:r_stp2:${userId}`,
           r_stp3,

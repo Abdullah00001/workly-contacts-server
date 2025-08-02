@@ -14,18 +14,16 @@ const ProfileRepositories = {
     dateOfBirth,
     location,
     user,
-    worksAt,
     name,
     phone,
     avatar,
   }: IProfilePayload) => {
     try {
-      if (bio || dateOfBirth || location || worksAt) {
+      if (bio || dateOfBirth || location) {
         const updatePayload: Partial<IProfile> = {};
         if (bio !== undefined) updatePayload.bio = bio;
         if (dateOfBirth !== undefined) updatePayload.dateOfBirth = dateOfBirth;
         if (location !== undefined) updatePayload.location = location;
-        if (worksAt !== undefined) updatePayload.worksAt = worksAt;
         const projection: Record<string, 0 | 1> = { _id: 0 };
         for (const key of Object.keys(updatePayload)) {
           projection[key] = 1;

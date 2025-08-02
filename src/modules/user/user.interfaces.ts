@@ -2,11 +2,20 @@ import { IImage } from '@/modules/contacts/contacts.interfaces';
 import { AuthType } from '@/modules/user/user.enums';
 import { Document, Types } from 'mongoose';
 
+export interface IPassword {
+  secret: string;
+  change_at: string;
+}
+
+export type TPassword = {
+  secret: string | null;
+  change_at: string | null;
+};
 interface IUser extends Document {
   name: string;
   email: string;
   phone: string;
-  password: string;
+  password: IPassword;
   isVerified: boolean;
   avatar: IImage;
   provider: AuthType;
@@ -16,7 +25,7 @@ interface IUser extends Document {
 export interface IUserPayload {
   name?: string;
   email?: string;
-  password?: string;
+  password?: TPassword;
   isVerified?: boolean;
   avatar?: IImage;
   userId?: Types.ObjectId;
@@ -44,18 +53,18 @@ export interface IProcessRecoverAccountPayload {
   r_stp2?: string;
   r_stp3?: string;
   rs_id?: string;
-  password?: string;
+  password?: IPassword;
 }
 
 export interface IResetPasswordRepositoryPayload {
-  password: string;
+  password: IPassword;
   userId: Types.ObjectId;
 }
 
 export interface IResetPasswordServicePayload {
   userId: Types.ObjectId;
   email: string;
-  password: string;
+  password: IPassword;
   r_stp3: string;
   location: string;
   device: string;

@@ -58,7 +58,10 @@ const ProfileControllers = {
     try {
       const { password } = req.body;
       const { userId } = req.decoded;
-      await processChangePassword({ password, user: userId });
+      await processChangePassword({
+        password: { secret: password, change_at: new Date().toISOString() },
+        user: userId,
+      });
       res
         .status(200)
         .json({ status: 'success', message: 'password change successful' });

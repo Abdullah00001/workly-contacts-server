@@ -27,7 +27,10 @@ const UserRepositories = {
         ...payload,
         avatar: { publicId: null, url: null },
       });
-      const newProfile = new Profile({ user: newUser._id });
+      const newProfile = new Profile({
+        user: newUser._id,
+        location: { home: null, work: null },
+      });
       await newProfile.save({ session });
       await newUser.save({ session });
       await session.commitTransaction();

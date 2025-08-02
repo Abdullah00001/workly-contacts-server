@@ -160,7 +160,7 @@ const UserMiddlewares = {
   checkPassword: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { password } = req.user as IUser;
-      if (!(await comparePassword(req?.body?.password, password))) {
+      if (!(await comparePassword(req?.body?.password, password.secret))) {
         res.status(400).json({ status: 'error', message: 'Invalid Password' });
         return;
       }

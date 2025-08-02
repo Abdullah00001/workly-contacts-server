@@ -34,13 +34,22 @@ const {
 } = UserServices;
 
 const UserControllers = {
+  /**
+   * This Handle Function Is For Signup Controller
+   * @param req request
+   * @param res request
+   * @param next next function
+   * This Handler Accept name,email,password as string in req.body object.we destructure the object and pass to processSignup service.processSignup service return the created user or if error occurred throw error.
+   * @returns successful user creation processSignup return us created user and we send the response with success flag,short message and in data with created user object.
+   * @error on error we simply call the next function with error
+   */
   handleSignUp: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, email, password } = req.body;
       const createdUser = await processSignup({
         name,
         email,
-        password,
+        password: { secret: password, change_at: new Date().toISOString() },
         provider: AuthType.LOCAL,
       });
       res.status(201).json({
@@ -359,7 +368,7 @@ const UserControllers = {
         device: userDevice,
         ipAddress: ipAddress,
         location: location,
-        password,
+        password: { secret: password, change_at: new Date().toISOString() },
       });
       res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
       res.cookie(

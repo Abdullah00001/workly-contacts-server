@@ -2,6 +2,7 @@ import redisClient from '@/configs/redis.configs';
 import { serverCacheExpiredIn } from '@/const';
 import { IProfilePayload } from '@/modules/profile/profile.interfaces';
 import ProfileRepositories from '@/modules/profile/profile.repositories';
+import { TPassword } from '@/modules/user/user.interfaces';
 import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
 
@@ -49,8 +50,11 @@ const ProfileServices = {
   },
   processChangePassword: async ({ user, password }: IProfilePayload) => {
     try {
-      const hash = (await hashPassword(password as string)) as string;
-      await changePassword({ user, password: hash });
+      const hash = (await hashPassword(password?.secret as string)) as string;
+      await changePassword({
+        user,
+        password: { ...password, secret: hash } as TPassword,
+      });
       return;
     } catch (error) {
       if (error instanceof Error) {
