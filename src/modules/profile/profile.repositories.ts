@@ -1,7 +1,9 @@
 import Contacts from '@/modules/contacts/contacts.models';
 import IProfile, {
   IGetProfileData,
+  IGetProfilePayload,
   IProfilePayload,
+  IProfileProjection,
 } from '@/modules/profile/profile.interfaces';
 import Profile from '@/modules/profile/profile.models';
 import IUser from '@/modules/user/user.interfaces';
@@ -66,38 +68,71 @@ const ProfileRepositories = {
       }
     }
   },
-  getProfile: async ({ user }: IProfilePayload): Promise<IGetProfileData> => {
+  getProfile: async ({ user, query }: IGetProfilePayload) => {
     const objectUserId = new mongoose.Types.ObjectId(user);
     try {
-      const profileData = await User.aggregate([
-        { $match: { _id: objectUserId } },
-        {
-          $lookup: {
-            from: 'profiles',
-            localField: '_id',
-            foreignField: 'user',
-            as: 'profile',
+      if (query && Object.keys(query).length > 0) {
+        const profileData = await User.aggregate([
+          { $match: { _id: objectUserId } },
+          {
+            $lookup: {
+              from: 'profiles',
+              localField: '_id',
+              foreignField: 'user',
+              as: 'profile',
+            },
           },
-        },
-        {
-          $unwind: {
-            path: '$profile',
-            preserveNullAndEmptyArrays: true,
+          {
+            $unwind: {
+              path: '$profile',
+              preserveNullAndEmptyArrays: true,
+            },
           },
-        },
-        {
-          $project: {
-            _id: 0,
-            name: 1,
-            avatar: 1,
+          {
+            $project: query,
           },
-        },
-      ]);
+        ]);
 
-      const { avatar, email, name, phone } = {
-        ...profileData[0],
-      } as IGetProfileData;
-      return { avatar, email, name, phone };
+        const { avatar, email, name, phone, dateOfBirth, gender, location } = {
+          ...profileData[0],
+        } as IGetProfileData;
+        return { avatar, email, name, phone, dateOfBirth, gender, location };
+      } else {
+        const profileData = await User.aggregate([
+          { $match: { _id: objectUserId } },
+          {
+            $lookup: {
+              from: 'profiles',
+              localField: '_id',
+              foreignField: 'user',
+              as: 'profile',
+            },
+          },
+          {
+            $unwind: {
+              path: '$profile',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              name: 1,
+              avatar: 1,
+              phone: 1,
+              email: 1,
+              location: '$profile.location',
+              dateOfBirth: '$profile.dateOfBirth',
+              gender: '$profile.gender',
+            },
+          },
+        ]);
+
+        const { avatar, email, name, phone, location, dateOfBirth, gender } = {
+          ...profileData[0],
+        } as IGetProfileData;
+        return { avatar, email, name, phone, location, dateOfBirth, gender };
+      }
     } catch (error) {
       if (error instanceof Error) {
         throw error;
