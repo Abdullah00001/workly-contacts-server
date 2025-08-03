@@ -29,10 +29,42 @@ export interface IProfilePayload {
   dateOfBirth?: string;
   user?: Types.ObjectId;
   profileId?: Types.ObjectId;
+  queryFieldList?: string[];
   name?: string;
   phone?: string;
   avatar?: IImage;
   password?: TPassword;
+  gender?: TGender;
+}
+export interface IProfileProjection {
+  location?: string;
+  dateOfBirth?: string;
+  user?: number;
+  name?: number;
+  phone?: number;
+  avatar?: number;
+  gender?: string;
+  _id: number;
+  email?: number;
+}
+
+export type TProfileProjection = {
+  location?: number;
+  dateOfBirth?: number;
+  email?: number;
+  user?: number;
+  name?: number;
+  phone?: number;
+  avatar?: number;
+  gender?: number;
+};
+
+export type TQuery = {};
+
+export interface IGetProfilePayload {
+  user?: Types.ObjectId;
+  query?: IProfileProjection;
+  queryFieldList?: string[];
 }
 
 export interface IGetProfileData {
@@ -41,6 +73,9 @@ export interface IGetProfileData {
   email?: string;
   avatar?: IImage;
   phone?: string;
+  location?: TLocation;
+  dateOfBirth?: string;
+  gender?: TGender;
 }
 
 export default IProfile;

@@ -39,10 +39,20 @@ const ProfileControllers = {
   handleGetProfile: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userId } = req.decoded;
-      const data = await processGetProfile({ user: userId });
-      res
-        .status(200)
-        .json({ status: 'success', message: 'get profile successful', data });
+      const queryString = req.query.fields as string;
+      if (queryString && queryString?.length > 0) {
+        const queryFieldList = queryString.split(',');
+        const { userId } = req.decoded;
+        const data = await processGetProfile({ user: userId, queryFieldList });
+        res
+          .status(200)
+          .json({ status: 'success', message: 'get profile successful', data });
+      } else {
+        const data = await processGetProfile({ user: userId });
+        res
+          .status(200)
+          .json({ status: 'success', message: 'get profile successful', data });
+      }
       return;
     } catch (error) {
       const err = error as Error;
