@@ -1,3 +1,4 @@
+import { IImage } from '@/modules/contacts/contacts.interfaces';
 import Contacts from '@/modules/contacts/contacts.models';
 import IProfile, {
   IGetProfileData,
@@ -44,7 +45,7 @@ const ProfileRepositories = {
         const updatePayload: Partial<IUser> = {};
         if (name !== undefined) updatePayload.name = name;
         if (phone !== undefined) updatePayload.phone = phone;
-        if (avatar !== undefined) updatePayload.avatar = avatar;
+        if (avatar !== undefined) updatePayload.avatar = avatar as IImage;
         const projection: Record<string, 0 | 1> = { _id: 0 };
         for (const key of Object.keys(updatePayload)) {
           projection[key] = 1;

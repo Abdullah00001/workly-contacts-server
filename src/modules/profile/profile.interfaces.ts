@@ -1,4 +1,4 @@
-import { IImage } from '@/modules/contacts/contacts.interfaces';
+import { IImage, TImage } from '@/modules/contacts/contacts.interfaces';
 import { GenderType } from '@/modules/profile/profile.enums';
 import { TPassword } from '@/modules/user/user.interfaces';
 import { Document, Types } from 'mongoose';
@@ -32,7 +32,7 @@ export interface IProfilePayload {
   queryFieldList?: string[];
   name?: string;
   phone?: string;
-  avatar?: IImage;
+  avatar?: TImage;
   password?: TPassword;
   gender?: TGender;
 }
@@ -76,6 +76,22 @@ export interface IGetProfileData {
   location?: TLocation;
   dateOfBirth?: string;
   gender?: TGender;
+}
+
+export interface IProcessAvatarUpload {
+  user: Types.ObjectId;
+  fileName: string;
+}
+
+export interface IProcessAvatarChange {
+  user: Types.ObjectId;
+  fileName: string;
+  publicId: string;
+}
+
+export interface IProcessAvatarRemove {
+  user: Types.ObjectId;
+  publicId: string;
 }
 
 export default IProfile;

@@ -1,18 +1,22 @@
+import CloudinaryConfigs from '@/configs/cloudinary.configs';
 import redisClient from '@/configs/redis.configs';
-import { serverCacheExpiredIn } from '@/const';
 import {
   IGetProfilePayload,
+  IProcessAvatarChange,
+  IProcessAvatarRemove,
+  IProcessAvatarUpload,
   IProfilePayload,
   IProfileProjection,
-  TProfileProjection,
 } from '@/modules/profile/profile.interfaces';
 import ProfileRepositories from '@/modules/profile/profile.repositories';
 import { TPassword } from '@/modules/user/user.interfaces';
 import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
+import { join } from 'path';
 
 const { getProfile, updateProfile, changePassword, deleteAccount } =
   ProfileRepositories;
+const { upload, destroy } = CloudinaryConfigs;
 const { expiresInTimeUnitToMs } = CalculationUtils;
 const { hashPassword } = PasswordUtils;
 
@@ -51,7 +55,7 @@ const ProfileServices = {
             projection.phone = 1;
           }
         });
-        return await getProfile({ user, query:projection });
+        return await getProfile({ user, query: projection });
       } else {
         return await getProfile({ user });
       }
@@ -93,6 +97,57 @@ const ProfileServices = {
         throw error;
       } else {
         throw new Error('Unknown Error Occurred In Delete Account Services');
+      }
+    }
+  },
+  processAvatarUpload: async ({ fileName, user }: IProcessAvatarUpload) => {
+    const avatarFilePath = join(__dirname, '../../../public/temp', fileName);
+    try {
+      const uploadResponse = await upload(avatarFilePath);
+      if (!uploadResponse) throw new Error('Avatar Upload Failed');
+      await updateProfile({ avatar: uploadResponse, user });
+      return uploadResponse;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Profile Avatar Upload Services'
+        );
+      }
+    }
+  },
+  processAvatarChange: async ({
+    fileName,
+    user,
+    publicId,
+  }: IProcessAvatarChange) => {
+    const avatarFilePath = join(__dirname, '../../../public/temp', fileName);
+    try {
+      const uploadResponse = await upload(avatarFilePath);
+      if (!uploadResponse) throw new Error('Avatar Change Failed');
+      await destroy(publicId);
+      await updateProfile({ avatar: uploadResponse, user });
+      return uploadResponse;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Profile Avatar Change Services'
+        );
+      }
+    }
+  },
+  processAvatarRemove: async ({ publicId, user }: IProcessAvatarRemove) => {
+    try {
+      await destroy(publicId);
+      await updateProfile({ avatar: { publicId: null, url: null }, user });
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Profile Avatar Services');
       }
     }
   },
