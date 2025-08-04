@@ -2,6 +2,7 @@ import CloudinaryConfigs from '@/configs/cloudinary.configs';
 import redisClient from '@/configs/redis.configs';
 import {
   IGetProfilePayload,
+  IProcessAvatarRemove,
   IProcessAvatarUpload,
   IProfilePayload,
   IProfileProjection,
@@ -105,6 +106,18 @@ const ProfileServices = {
       if (!uploadResponse) throw new Error('Avatar Upload Failed');
       await updateProfile({ avatar: uploadResponse, user });
       return uploadResponse;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Profile Avatar Services');
+      }
+    }
+  },
+  processAvatarRemove: async ({ publicId, user }: IProcessAvatarRemove) => {
+    try {
+      await destroy(publicId);
+      await updateProfile({ avatar: { publicId: null, url: null }, user });
     } catch (error) {
       if (error instanceof Error) {
         throw error;

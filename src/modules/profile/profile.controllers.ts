@@ -11,6 +11,7 @@ const {
   processChangePassword,
   processDeleteAccount,
   processAvatarUpload,
+  processAvatarRemove,
 } = ProfileServices;
 
 const { cookieOption } = CookieUtils;
@@ -112,7 +113,24 @@ const ProfileControllers = {
     const fileName = req.file?.filename as string;
     try {
       const data = await processAvatarUpload({ fileName, user: userId });
-      res.json({ success: true, message: 'Avatar uploaded', data });
+      res.status(200).json({ success: true, message: 'Avatar uploaded', data });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleAvatarRemove: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { userId } = req.decoded;
+    const { publicId } = req.body;
+    try {
+      await processAvatarRemove({ publicId, user: userId });
+      res.status(204).end();
       return;
     } catch (error) {
       const err = error as Error;
