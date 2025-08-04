@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import ProfileControllers from '@/modules/profile/profile.controllers';
 import UserMiddlewares from '@/modules/user/user.middlewares';
+import upload from '@/middlewares/multer.middleware';
 
 const { checkAccessToken } = UserMiddlewares;
 const {
@@ -8,6 +9,7 @@ const {
   handleUpdateProfile,
   handleChangePassword,
   handleDeleteAccount,
+  handleAvatarUpload,
 } = ProfileControllers;
 
 const router = Router();
@@ -18,5 +20,8 @@ router
   .patch(checkAccessToken, handleUpdateProfile)
   .post(checkAccessToken, handleChangePassword)
   .delete(checkAccessToken, handleDeleteAccount);
+router
+  .route('/me/avatar')
+  .patch(checkAccessToken, upload.single('avatar'), handleAvatarUpload);
 
 export default router;

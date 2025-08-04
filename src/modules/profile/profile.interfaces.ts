@@ -78,4 +78,9 @@ export interface IGetProfileData {
   gender?: TGender;
 }
 
+export interface IProcessAvatarUpload{
+  user: Types.ObjectId;
+  fileName:string;
+}
+
 export default IProfile;
