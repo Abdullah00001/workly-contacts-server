@@ -12,6 +12,7 @@ const {
   processDeleteAccount,
   processAvatarUpload,
   processAvatarRemove,
+  processAvatarChange,
 } = ProfileServices;
 
 const { cookieOption } = CookieUtils;
@@ -127,10 +128,40 @@ const ProfileControllers = {
     next: NextFunction
   ) => {
     const { userId } = req.decoded;
-    const { publicId } = req.body;
+    const { folder, public_id } = req.params;
+    if (!public_id && !folder) {
+      res.status(400).json({
+        status: 'error',
+        message: 'public_id is required to delete an image',
+      });
+      return;
+    }
+    const publicId = `${folder}/${public_id}`;
     try {
       await processAvatarRemove({ publicId, user: userId });
       res.status(204).end();
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleAvatarChange: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { userId } = req.decoded;
+    const fileName = req.file?.filename as string;
+    const { publicId } = req.body;
+    try {
+      const data = await processAvatarChange({
+        fileName,
+        user: userId,
+        publicId,
+      });
+      res.status(200).json({ success: true, message: 'Avatar changed', data });
       return;
     } catch (error) {
       const err = error as Error;

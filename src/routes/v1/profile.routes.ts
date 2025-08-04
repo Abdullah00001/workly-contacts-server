@@ -11,6 +11,7 @@ const {
   handleDeleteAccount,
   handleAvatarUpload,
   handleAvatarRemove,
+  handleAvatarChange,
 } = ProfileControllers;
 
 const router = Router();
@@ -23,7 +24,10 @@ router
   .delete(checkAccessToken, handleDeleteAccount);
 router
   .route('/me/avatar')
-  .patch(checkAccessToken, upload.single('avatar'), handleAvatarUpload)
+  .put(checkAccessToken, upload.single('avatar'), handleAvatarUpload)
+  .patch(checkAccessToken, upload.single('avatar'), handleAvatarChange);
+router
+  .route('/me/avatar/:folder/:public_id')
   .delete(checkAccessToken, handleAvatarRemove);
 
 export default router;

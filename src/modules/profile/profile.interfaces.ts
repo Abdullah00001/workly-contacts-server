@@ -83,6 +83,12 @@ export interface IProcessAvatarUpload {
   fileName: string;
 }
 
+export interface IProcessAvatarChange {
+  user: Types.ObjectId;
+  fileName: string;
+  publicId: string;
+}
+
 export interface IProcessAvatarRemove {
   user: Types.ObjectId;
   publicId: string;
