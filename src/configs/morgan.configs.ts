@@ -1,4 +1,4 @@
-import logger from './logger.configs';
+import logger from '@/configs/logger.configs';
 
 interface LogObject {
   method: string;

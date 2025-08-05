@@ -2,14 +2,25 @@ import logger from '@/configs/logger.configs';
 import redisClient from '@/configs/redis.configs';
 import UserRepositories from '@/modules/user/user.repositories';
 import { NextFunction, Request, Response } from 'express';
-import IUser from '@/modules/user/user.interfaces';
+import IUser, { IActivityPayload } from '@/modules/user/user.interfaces';
 import PasswordUtils from '@/utils/password.utils';
 import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import JwtUtils from '@/utils/jwt.utils';
+import EmailQueueJobs from '@/queue/jobs/email.jobs';
+import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
+import ExtractMetaData from '@/utils/metaData.utils';
+import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
+import { ActivityType } from '@/modules/user/user.enums';
+import { Types } from 'mongoose';
+import { AccountActivityMap } from '@/const';
 
 const { comparePassword } = PasswordUtils;
 const { findUserByEmail } = UserRepositories;
 const { verifyAccessToken, verifyRefreshToken, verifyRecoverToken } = JwtUtils;
+
+const { loginFailedNotificationEmailToQueue } = EmailQueueJobs;
+const { loginFailedActivitySavedInDb } = ActivityQueueJobs;
+const { getClientMetaData } = ExtractMetaData;
 
 const UserMiddlewares = {
   isSignupUserExist: async (
@@ -159,8 +170,35 @@ const UserMiddlewares = {
   },
   checkPassword: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { password } = req.user as IUser;
+      const { name, email, password, _id } = req.user as IUser;
       if (!(await comparePassword(req?.body?.password, password.secret))) {
+        const { browser, device, location, os, ip } =
+          await getClientMetaData(req);
+        const emailPayload: ILoginEmailPayload = {
+          name,
+          email,
+          browser: browser.name as string,
+          device: device.model as string,
+          ip,
+          os: os.name as string,
+          location: `${location.city} ${location.country}`,
+          time: new Date().toISOString(),
+        };
+        const activityPayload: IActivityPayload = {
+          browser: browser.name as string,
+          device: device.model as string,
+          os: os.name as string,
+          location: `${location.city} ${location.country}`,
+          ipAddress: ip,
+          activityType: ActivityType.LOGIN_FAILED,
+          user: _id as Types.ObjectId,
+          title: AccountActivityMap.LOGIN_FAILED.title,
+          description: AccountActivityMap.LOGIN_FAILED.description,
+        };
+        await Promise.all([
+          loginFailedNotificationEmailToQueue(emailPayload),
+          loginFailedActivitySavedInDb(activityPayload),
+        ]);
         res.status(400).json({ status: 'error', message: 'Invalid Password' });
         return;
       }
