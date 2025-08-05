@@ -17,6 +17,8 @@ import {
   IResetPasswordSendEmailPayload,
 } from '@/modules/user/user.interfaces';
 import { passwordResetNotificationTemplate } from '@/templates/passwordResetNotificationTemplate';
+import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
+import failedLoginAttemptEmailTemplate from '@/templates/failedLoginAttemptEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 
@@ -78,6 +80,21 @@ const worker = new Worker(
           mailOption(
             email,
             'Security Alert: Your Password Was Reset',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
+      if (name === 'send-login-failed-notification-email') {
+        const { browser, device, email, ip, location, name, os, time } =
+          data as ILoginEmailPayload;
+        const templateData = { browser, device, ip, location, name, os, time };
+        const template = Handlebars.compile(failedLoginAttemptEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'Security Alert: Some One Try to Access Your Account',
             personalizedTemplate
           )
         );

@@ -1,7 +1,8 @@
 import { model, Model, Schema } from 'mongoose';
-import IUser, { IPassword } from '@/modules/user/user.interfaces';
+import IUser, { IActivity, IPassword } from '@/modules/user/user.interfaces';
 import PasswordUtils from '@/utils/password.utils';
 import { AvatarSchema } from '@/modules/contacts/contacts.models';
+import { ActivityType } from '@/modules/user/user.enums';
 
 const { hashPassword } = PasswordUtils;
 
@@ -23,6 +24,26 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String, default: null },
     googleId: { type: String, default: null },
     provider: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+const ActivitySchema = new Schema<IActivity>(
+  {
+    activityType: { type: String, enum: ActivityType, required: true },
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    device: { type: String, required: true },
+    browser: { type: String, required: true },
+    id: { type: String, required: true },
+    ipAddress: { type: String, required: true },
+    location: { type: String, required: true },
+    os: { type: String, required: true },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
   },
   { timestamps: true }
 );
@@ -51,5 +72,9 @@ UserSchema.pre('save', async function (next) {
 });
 
 const User: Model<IUser> = model<IUser>('User', UserSchema);
+export const Activity: Model<IActivity> = model<IActivity>(
+  'Activity',
+  ActivitySchema
+);
 
 export default User;

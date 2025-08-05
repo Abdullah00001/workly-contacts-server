@@ -1,5 +1,5 @@
 import { IImage } from '@/modules/contacts/contacts.interfaces';
-import { AuthType } from '@/modules/user/user.enums';
+import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { Document, Types } from 'mongoose';
 
 export interface IPassword {
@@ -20,6 +20,73 @@ interface IUser extends Document {
   avatar: IImage;
   provider: AuthType;
   googleId: string;
+}
+
+export interface IActivity extends Document {
+  activityType: ActivityType;
+  title: string;
+  description: string;
+  device: string;
+  os: string;
+  browser: string;
+  location: string;
+  ipAddress: string;
+  user: Types.ObjectId;
+}
+
+export interface IActivityPayload {
+  activityType: ActivityType;
+  title: string;
+  description: string;
+  device: string;
+  os: string;
+  browser: string;
+  location: string;
+  ipAddress: string;
+  user: Types.ObjectId;
+}
+
+export interface ISession {
+  sessionId: string;
+  refreshToken: string;
+  os: string;
+  browser: string;
+  location: string;
+  lastUsed: string;
+}
+
+export interface IGeoLocation {
+  query: string;
+  status: 'success' | 'fail';
+  continent: string;
+  continentCode: string;
+  country: string;
+  countryCode: string;
+  region: string;
+  regionName: string;
+  city: string;
+  district: string;
+  zip: string;
+  lat: number;
+  lon: number;
+  timezone: string;
+  offset: number;
+  currency: string;
+  isp: string;
+  org: string;
+  as: string;
+  asname: string;
+  mobile: boolean;
+  proxy: boolean;
+  hosting: boolean;
+}
+
+export interface IGetClientMetaData {
+  browser: UAParser.IBrowser;
+  device: UAParser.IDevice;
+  os: UAParser.IOS;
+  location: IGeoLocation;
+  ip: string;
 }
 
 export interface IUserPayload {

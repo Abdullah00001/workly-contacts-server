@@ -20,13 +20,15 @@ const ProfileRepositories = {
     name,
     phone,
     avatar,
+    gender,
   }: IProfilePayload) => {
     try {
-      if (bio || dateOfBirth || location) {
+      if (bio || dateOfBirth || location || gender) {
         const updatePayload: Partial<IProfile> = {};
         if (bio !== undefined) updatePayload.bio = bio;
         if (dateOfBirth !== undefined) updatePayload.dateOfBirth = dateOfBirth;
         if (location !== undefined) updatePayload.location = location;
+        if (gender !== undefined) updatePayload.gender = gender;
         const projection: Record<string, 0 | 1> = { _id: 0 };
         for (const key of Object.keys(updatePayload)) {
           projection[key] = 1;

@@ -24,7 +24,7 @@ const ProfileServices = {
   processUpdateProfile: async (payload: IProfilePayload) => {
     try {
       const data = await updateProfile(payload);
-      await redisClient.del(`me:${payload.user}`);
+      // await redisClient.del(`me:${payload.user}`);
       return data;
     } catch (error) {
       if (error instanceof Error) {
