@@ -2,20 +2,25 @@ import { Job, Worker } from 'bullmq';
 import logger from '@/configs/logger.configs';
 import { Activity } from '@/modules/user/user.models';
 import { IActivityPayload } from '@/modules/user/user.interfaces';
+import redisClient from '@/configs/redis.configs';
 
-const worker = new Worker('activity-queue', async (job: Job) => {
-  const { name, data, id } = job;
-  try {
-    if (name === 'save-activity-to-db') {
-      const newActivity = new Activity(data as IActivityPayload);
-      await newActivity.save();
-      return;
+const worker = new Worker(
+  'activity-queue',
+  async (job: Job) => {
+    const { name, data, id } = job;
+    try {
+      if (name === 'save-activity-to-db') {
+        const newActivity = new Activity(data as IActivityPayload);
+        await newActivity.save();
+        return;
+      }
+    } catch (error) {
+      logger.error('Worker job failed', { jobName: name, jobId: id, error });
+      throw error;
     }
-  } catch (error) {
-    logger.error('Worker job failed', { jobName: name, jobId: id, error });
-    throw error;
-  }
-});
+  },
+  { connection: redisClient }
+);
 
 worker.on('completed', (job: Job) => {
   logger.info(`Job Name : ${job.name} Job Id : ${job.id} Completed`);

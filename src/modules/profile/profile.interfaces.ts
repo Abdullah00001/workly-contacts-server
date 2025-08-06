@@ -59,8 +59,6 @@ export type TProfileProjection = {
   gender?: number;
 };
 
-export type TQuery = {};
-
 export interface IGetProfilePayload {
   user?: Types.ObjectId;
   query?: IProfileProjection;

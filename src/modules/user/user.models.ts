@@ -35,7 +35,6 @@ const ActivitySchema = new Schema<IActivity>(
     description: { type: String, required: true },
     device: { type: String, required: true },
     browser: { type: String, required: true },
-    id: { type: String, required: true },
     ipAddress: { type: String, required: true },
     location: { type: String, required: true },
     os: { type: String, required: true },

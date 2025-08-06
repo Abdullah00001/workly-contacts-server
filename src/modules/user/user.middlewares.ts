@@ -13,6 +13,7 @@ import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import { ActivityType } from '@/modules/user/user.enums';
 import { Types } from 'mongoose';
 import { AccountActivityMap } from '@/const';
+import DateUtils from '@/utils/date.utils';
 
 const { comparePassword } = PasswordUtils;
 const { findUserByEmail } = UserRepositories;
@@ -21,6 +22,8 @@ const { verifyAccessToken, verifyRefreshToken, verifyRecoverToken } = JwtUtils;
 const { loginFailedNotificationEmailToQueue } = EmailQueueJobs;
 const { loginFailedActivitySavedInDb } = ActivityQueueJobs;
 const { getClientMetaData } = ExtractMetaData;
+
+const { formatDateTime } = DateUtils;
 
 const UserMiddlewares = {
   isSignupUserExist: async (
@@ -178,15 +181,15 @@ const UserMiddlewares = {
           name,
           email,
           browser: browser.name as string,
-          device: device.model as string,
+          device: device.model || 'desktop',
           ip,
           os: os.name as string,
           location: `${location.city} ${location.country}`,
-          time: new Date().toISOString(),
+          time: formatDateTime(new Date().toISOString()),
         };
         const activityPayload: IActivityPayload = {
           browser: browser.name as string,
-          device: device.model as string,
+          device: device.model || 'desktop',
           os: os.name as string,
           location: `${location.city} ${location.country}`,
           ipAddress: ip,
@@ -418,20 +421,6 @@ const UserMiddlewares = {
         next(error);
       }
     }
-  },
-  getRealIP: (req: Request) => {
-    const forwarded = req.headers['x-forwarded-for'];
-    const realIp = req.headers['x-real-ip'];
-    const socketIp = req.socket.remoteAddress;
-
-    if (forwarded) {
-      return (forwarded as string).split(',')[0].trim();
-    }
-
-    if (realIp) {
-      return realIp as string;
-    }
-    return socketIp || '';
   },
 };
 

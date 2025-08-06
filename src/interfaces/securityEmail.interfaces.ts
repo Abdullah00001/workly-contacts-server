@@ -6,5 +6,5 @@ export interface ILoginEmailPayload {
   time: string;
   ip: string;
   location: string;
-  email:string
+  email: string;
 }
