@@ -24,7 +24,7 @@ const CloudinaryConfigs = {
       });
       fs.unlinkSync(imagePath);
       return {
-        url: cloudinaryResponse.url,
+        url: cloudinaryResponse.secure_url,
         publicId: cloudinaryResponse.public_id,
       };
     } catch (error) {

@@ -17,7 +17,6 @@ import { join } from 'path';
 const { getProfile, updateProfile, changePassword, deleteAccount } =
   ProfileRepositories;
 const { upload, destroy } = CloudinaryConfigs;
-const { expiresInTimeUnitToMs } = CalculationUtils;
 const { hashPassword } = PasswordUtils;
 
 const ProfileServices = {
