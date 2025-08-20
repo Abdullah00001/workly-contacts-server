@@ -56,7 +56,7 @@ export const AccountActivityMap: Record<
   [ActivityType.SIGNUP_SUCCESS]: {
     title: 'Account Was Created',
     description:
-      'Your Amar Contacts account was successfully registered. If you did not sign up, please contact support to investigate unauthorized activity.',
+      'Your Amar Contacts account was successfully registered.',
   },
 
   [ActivityType.PASSWORD_RESET]: {

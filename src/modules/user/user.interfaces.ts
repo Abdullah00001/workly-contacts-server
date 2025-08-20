@@ -1,5 +1,9 @@
 import { IImage } from '@/modules/contacts/contacts.interfaces';
-import { ActivityType, AuthType } from '@/modules/user/user.enums';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+} from '@/modules/user/user.enums';
 import { Document, Types } from 'mongoose';
 
 export interface IPassword {
@@ -17,6 +21,7 @@ interface IUser extends Document {
   phone: string;
   password: IPassword;
   isVerified: boolean;
+  accountStatus: AccountStatus;
   avatar: IImage;
   provider: AuthType;
   googleId: string;

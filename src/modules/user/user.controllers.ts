@@ -75,6 +75,7 @@ const UserControllers = {
     try {
       const user = req?.user as IUser;
       const { accessToken, refreshToken } = await processVerifyUser(user);
+      
       res.cookie(
         'accesstoken',
         accessToken,

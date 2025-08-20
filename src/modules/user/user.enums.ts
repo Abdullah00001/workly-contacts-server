@@ -8,4 +8,10 @@ export enum ActivityType {
   LOGIN_SUCCESS = 'LOGIN_SUCCESS',
   SIGNUP_SUCCESS = 'SIGNUP_SUCCESS',
   PASSWORD_RESET = 'PASSWORD_RESET',
+  ACCOUNT_LOCKED = 'ACCOUNT_LOCKED',
+}
+
+export enum AccountStatus {
+  ACTIVE = 'active',
+  LOCKED = 'locked',
 }

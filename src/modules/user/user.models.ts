@@ -2,7 +2,7 @@ import { model, Model, Schema } from 'mongoose';
 import IUser, { IActivity, IPassword } from '@/modules/user/user.interfaces';
 import PasswordUtils from '@/utils/password.utils';
 import { AvatarSchema } from '@/modules/contacts/contacts.models';
-import { ActivityType } from '@/modules/user/user.enums';
+import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
 
 const { hashPassword } = PasswordUtils;
 
@@ -24,6 +24,11 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String, default: null },
     googleId: { type: String, default: null },
     provider: { type: String, required: true },
+    accountStatus: {
+      type: String,
+      enum: AccountStatus,
+      default: AccountStatus.ACTIVE,
+    },
   },
   { timestamps: true }
 );
