@@ -157,43 +157,43 @@ const UserControllers = {
       next(error);
     }
   },
-  handleRefreshTokens: async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      const currentRefreshToken = req.cookies?.refreshtoken;
-      const { email, isVerified, name, userId } = req.decoded;
-      const { accessToken, refreshToken } = await processTokens({
-        userId,
-        email,
-        isVerified,
-        name,
-        refreshToken: currentRefreshToken,
-      });
-      res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
-      res.cookie(
-        'accesstoken',
-        accessToken,
-        cookieOption(accessTokenExpiresIn)
-      );
-      res.cookie(
-        'refreshtoken',
-        refreshToken,
-        cookieOption(refreshTokenExpiresIn)
-      );
-      res.status(200).json({
-        status: 'success',
-        message: 'Token refreshed',
-      });
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
+  // handleRefreshTokens: async (
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction
+  // ) => {
+  //   try {
+  //     const currentRefreshToken = req.cookies?.refreshtoken;
+  //     const { email, isVerified, name, userId } = req.decoded;
+  //     const { accessToken, refreshToken } = await processTokens({
+  //       userId,
+  //       email,
+  //       isVerified,
+  //       name,
+  //       refreshToken: currentRefreshToken,
+  //     });
+  //     res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
+  //     res.cookie(
+  //       'accesstoken',
+  //       accessToken,
+  //       cookieOption(accessTokenExpiresIn)
+  //     );
+  //     res.cookie(
+  //       'refreshtoken',
+  //       refreshToken,
+  //       cookieOption(refreshTokenExpiresIn)
+  //     );
+  //     res.status(200).json({
+  //       status: 'success',
+  //       message: 'Token refreshed',
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
   handleFindUser: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user as IUser;

@@ -64,4 +64,12 @@ export const AccountActivityMap: Record<
     description:
       'Your account password was changed successfully. If you did not perform this action, please secure your account by resetting your password and reviewing recent activity.',
   },
+  [ActivityType.ACCOUNT_LOCKED]:{
+    title:'',
+    description:''
+  },
+  [ActivityType.ACCOUNT_ACTIVE]:{
+    title:'',
+    description:''
+  }
 };

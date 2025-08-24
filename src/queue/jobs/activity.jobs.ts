@@ -9,6 +9,7 @@ const ActivityQueueJobs = {
       backoff: { type: 'exponential', delay: 3000 },
     });
   },
+  loginSuccessActivitySavedInDb:async()=>{}
 };
 
 export default ActivityQueueJobs;

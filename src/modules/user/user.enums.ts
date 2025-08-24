@@ -9,9 +9,17 @@ export enum ActivityType {
   SIGNUP_SUCCESS = 'SIGNUP_SUCCESS',
   PASSWORD_RESET = 'PASSWORD_RESET',
   ACCOUNT_LOCKED = 'ACCOUNT_LOCKED',
+  ACCOUNT_ACTIVE = 'ACCOUNT_ACTIVE',
 }
 
 export enum AccountStatus {
   ACTIVE = 'active',
+  ON_RISK = 'on_risk',
   LOCKED = 'locked',
+}
+
+export enum DeviceType {
+  MOBILE = 'mobile',
+  TABLET = 'tablet',
+  DESKTOP = 'desktop',
 }

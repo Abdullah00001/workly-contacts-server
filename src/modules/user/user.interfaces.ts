@@ -3,6 +3,7 @@ import {
   AccountStatus,
   ActivityType,
   AuthType,
+  DeviceType,
 } from '@/modules/user/user.enums';
 import { Document, Types } from 'mongoose';
 
@@ -168,5 +169,17 @@ export interface IPasswordResetNotificationTemplateData {
   resetDateTime: string;
   name: string;
 }
+
+export type TSession = {
+  sessionId: string;
+  createdAt: string;
+  expiredAt: string;
+  lastUsedAt: string;
+  userId: string;
+  deviceType: DeviceType;
+  browser: string;
+  os: string;
+  location: string;
+};
 
 export default IUser;
