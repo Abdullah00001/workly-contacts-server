@@ -4,7 +4,7 @@ const SuccessFulLoginEmailTemplate = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Notification - Amar Contacts</title>
+    <title>Login Notification - Workly Contacts</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -331,7 +331,7 @@ const SuccessFulLoginEmailTemplate = `
 <body>
     <div class="email-container">
         <div class="header">
-            <div class="logo">Amar Contacts</div>
+            <div class="logo">Workly Contacts</div>
             <div class="tagline">Secure Contact Management</div>
         </div>
         
@@ -339,7 +339,7 @@ const SuccessFulLoginEmailTemplate = `
             <div class="greeting">Hi {{name}},</div>
             
             <div class="message">
-                We noticed a successful login to your <strong>Amar Contacts</strong> account. Your security is important to us, so we're letting you know about this activity.
+                We noticed a successful login to your <strong>Workly Contacts</strong> account. Your security is important to us, so we're letting you know about this activity.
             </div>
             
             <div class="details-card">
@@ -410,7 +410,7 @@ const SuccessFulLoginEmailTemplate = `
             
             <div class="signature">
                 Best regards,<br>
-                <strong>The Amar Contacts Team</strong>
+                <strong>The Workly Contacts Team</strong>
             </div>
         </div>
     </div>

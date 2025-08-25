@@ -188,7 +188,7 @@ export const verificationEmailTemplate = `
     <div class="email-header">
       <div class="header-icon">✉️</div>
       <h1 class="header-title">Verify Your Account</h1>
-      <p class="header-subtitle">Welcome to Amar Contacts</p>
+      <p class="header-subtitle">Welcome to Workly Contacts</p>
     </div>
 
     <div class="email-body">
@@ -197,7 +197,7 @@ export const verificationEmailTemplate = `
       </div>
 
       <div class="message">
-        Thank you for signing up to Amar Contacts. To complete your registration and secure your account, please use the verification code below.
+        Thank you for signing up to Workly Contacts. To complete your registration and secure your account, please use the verification code below.
       </div>
 
       <div class="otp-container">
@@ -223,13 +223,13 @@ export const verificationEmailTemplate = `
 
     <div class="footer">
       <p class="footer-text">
-        &copy; Amar Contacts. All rights reserved.
+        &copy; Workly Contacts. All rights reserved.
       </p>
       
       <div class="footer-links">
-        <a href="https://amar-contacts.vercel.app/">Visit Website</a>
-        <a href="https://amar-contacts.vercel.app/support">Need Help?</a>
-        <a href="https://amar-contacts.vercel.app/privacy">Privacy Policy</a>
+        <a href="https://contacts.workly.ink/">Visit Website</a>
+        <a href="https://contacts.workly.ink/support">Need Help?</a>
+        <a href="https://contacts.workly.ink/privacy">Privacy Policy</a>
       </div>
 
       <div class="help-text">

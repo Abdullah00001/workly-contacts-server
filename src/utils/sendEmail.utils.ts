@@ -50,7 +50,7 @@ const SendEmail = {
         expirationTime,
         name,
         otp,
-        companyName: 'Amar Contacts',
+        companyName: 'Workly Contacts',
         supportEmail,
         year: new Date().getFullYear(),
       };
@@ -59,7 +59,7 @@ const SendEmail = {
       await mailTransporter.sendMail(
         mailOption(
           email,
-          'Your Verification Code - Amar Contacts',
+          'Your Verification Code - Workly Contacts',
           personalizedTemplate
         )
       );

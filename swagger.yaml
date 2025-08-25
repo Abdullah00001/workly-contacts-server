@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Amar Contacts API
+  title: Workly Contacts API
   description: |
     A comprehensive RESTful API for contact management application with authentication, 
     profile management, and contact lifecycle operations.
@@ -22,11 +22,11 @@ info:
     ```
   version: 1.5.0
   contact:
-    name: Amar Contacts
+    name: Workly Contacts
     email: your-email@example.com
   license:
     name: All Rights Reserved
-    url: https://github.com/yourusername/amar-contacts/blob/main/LICENSE
+    url: https://github.com/yourusername/workly-contacts/blob/main/LICENSE
 
 servers:
   - url: http://localhost:3000/api

@@ -4,7 +4,7 @@ export const accountLockedEmailTemplate = `
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Amar Contacts - Account Unlocked</title>
+    <title>Workly Contacts - Account Unlocked</title>
   </head>
   <body
     style="
@@ -57,7 +57,7 @@ export const accountLockedEmailTemplate = `
                     font-weight: bold;
                   "
                 >
-                  Amar Contacts
+                  Workly Contacts
                 </h1>
                 <p style="margin: 8px 0 0 0; color: #e8f5e8; font-size: 16px">
                   Account Unlocked ✓
@@ -101,7 +101,7 @@ export const accountLockedEmailTemplate = `
                       font-weight: bold;
                     "
                   >
-                    Your Amar Contacts account has been
+                    Your Workly Contacts account has been
                     <span style="color: #34a853">successfully unlocked</span>
                     and is now active!
                   </p>
@@ -387,7 +387,7 @@ export const accountLockedEmailTemplate = `
                   style="margin: 30px 0 10px 0; font-size: 16px; color: #333333"
                 >
                   Thank you for taking quick action to secure your account.
-                  Welcome back to Amar Contacts!
+                  Welcome back to Workly Contacts!
                 </p>
                 <p
                   style="
@@ -397,7 +397,7 @@ export const accountLockedEmailTemplate = `
                     font-weight: bold;
                   "
                 >
-                  <strong>The Amar Contacts Team</strong>
+                  <strong>The Workly Contacts Team</strong>
                 </p>
               </td>
             </tr>
@@ -421,11 +421,11 @@ export const accountLockedEmailTemplate = `
                     line-height: 1.4;
                   "
                 >
-                  This confirmation email was sent because your Amar Contacts
+                  This confirmation email was sent because your Workly Contacts
                   account was recently unlocked.
                 </p>
                 <p style="margin: 0; font-size: 12px; color: #666666">
-                  © 2025 Amar Contacts. All rights reserved.
+                  © 2025 Workly Contacts. All rights reserved.
                 </p>
               </td>
             </tr>

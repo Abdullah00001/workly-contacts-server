@@ -132,6 +132,7 @@ const UserServices = {
         expiredAt: calculateFutureDate(refreshTokenExpiresIn),
         lastUsedAt: new Date().toISOString(),
       };
+      
       return { accessToken: accessToken!, refreshToken: refreshToken! };
     } catch (error) {
       if (error instanceof Error) {

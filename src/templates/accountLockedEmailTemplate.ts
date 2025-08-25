@@ -4,7 +4,7 @@ export const accountLockedEmailTemplate = `
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Amar Contacts - Account Security Alert</title>
+    <title>Workly Contacts - Account Security Alert</title>
   </head>
   <body
     style="
@@ -57,7 +57,7 @@ export const accountLockedEmailTemplate = `
                     font-weight: bold;
                   "
                 >
-                  Amar Contacts
+                  Workly Contacts
                 </h1>
                 <p style="margin: 8px 0 0 0; color: #e8f0fe; font-size: 16px">
                   Security Alert
@@ -98,7 +98,7 @@ export const accountLockedEmailTemplate = `
                       line-height: 1.6;
                     "
                   >
-                    For your security, your Amar Contacts account has been
+                    For your security, your Workly Contacts account has been
                     <strong style="color: #d93025">temporarily locked</strong>
                     due to suspicious activity or multiple unsuccessful login
                     attempts.
@@ -342,7 +342,7 @@ export const accountLockedEmailTemplate = `
                 <p
                   style="margin: 30px 0 10px 0; font-size: 16px; color: #333333"
                 >
-                  Thank you for using Amar Contacts.
+                  Thank you for using Workly Contacts.
                 </p>
                 <p
                   style="
@@ -352,7 +352,7 @@ export const accountLockedEmailTemplate = `
                     font-weight: bold;
                   "
                 >
-                  <strong>The Amar Contacts Team</strong>
+                  <strong>The Workly Contacts Team</strong>
                 </p>
               </td>
             </tr>
@@ -376,11 +376,11 @@ export const accountLockedEmailTemplate = `
                     line-height: 1.4;
                   "
                 >
-                  This email was sent to you because your Amar Contacts account
+                  This email was sent to you because your Workly Contacts account
                   requires immediate attention.
                 </p>
                 <p style="margin: 0; font-size: 12px; color: #666666">
-                  © 2025 Amar Contacts. All rights reserved.
+                  © 2025 Workly Contacts. All rights reserved.
                 </p>
               </td>
             </tr>
