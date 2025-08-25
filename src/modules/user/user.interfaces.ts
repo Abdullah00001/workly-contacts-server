@@ -182,4 +182,13 @@ export type TSession = {
   location: string;
 };
 
+export type TProcessVerifyUserArgs = {
+  email: string;
+  userId: Types.ObjectId;
+  browser: string;
+  deviceType: DeviceType;
+  os: string;
+  location: string;
+};
+
 export default IUser;

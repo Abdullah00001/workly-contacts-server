@@ -5,6 +5,8 @@ import IUser, {
   IResetPasswordServicePayload,
   IResetPasswordServiceReturnPayload,
   IUserPayload,
+  TProcessVerifyUserArgs,
+  TSession,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
@@ -21,6 +23,8 @@ import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
 import EmailQueueJobs from '@/queue/jobs/email.jobs';
 import { OtpUtilsSingleton } from '@/singletons';
+import { v4 as uuidv4 } from 'uuid';
+import DateUtils from '@/utils/date.utils';
 
 const { hashPassword } = PasswordUtils;
 const {
@@ -32,10 +36,9 @@ const {
 const { createNewUser, verifyUser, findUserByEmail, resetPassword } =
   UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
-
+const { calculateFutureDate } = DateUtils;
 const { generateAccessToken, generateRefreshToken, generateRecoverToken } =
   JwtUtils;
-
 const otpUtils = OtpUtilsSingleton();
 
 const UserServices = {
@@ -101,24 +104,35 @@ const UserServices = {
   processVerifyUser: async ({
     email,
     userId,
-  }: IUserPayload): Promise<IUserPayload> => {
+    browser,
+    deviceType,
+    location,
+    os,
+  }: TProcessVerifyUserArgs): Promise<IUserPayload> => {
     try {
       const user = await verifyUser({ email });
       await redisClient.del(`user:recover:otp:${userId}`);
-      
+      const sid = uuidv4();
       const accessToken = generateAccessToken({
-        email: user?.email as string,
-        isVerified: user?.isVerified as boolean,
-        userId: user?._id as Types.ObjectId,
-        name: user?.name as string,
+        sid,
+        sub: user?._id as string,
       });
       const refreshToken = generateRefreshToken({
-        email: user?.email as string,
-        isVerified: user?.isVerified as boolean,
-        userId: user?._id as Types.ObjectId,
-        name: user?.name as string,
+        sid,
+        sub: user?._id as string,
       });
-      return { accessToken: accessToken!, refreshToken: refreshToken! };\
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: user?._id as string,
+        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        lastUsedAt: new Date().toISOString(),
+      };
+      return { accessToken: accessToken!, refreshToken: refreshToken! };
     } catch (error) {
       if (error instanceof Error) {
         throw error;
