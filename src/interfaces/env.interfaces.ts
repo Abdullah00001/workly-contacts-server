@@ -16,4 +16,5 @@ export default interface IEnvConfig {
   GOOGLE_CLIENT_ID: string;
   CALLBACK_URL: string;
   CLIENT_BASE_URL: string;
+  OTP_HASH_SECRET:string
 }
