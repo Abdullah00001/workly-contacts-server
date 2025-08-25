@@ -54,7 +54,7 @@ const UserControllers = {
       });
       res.status(201).json({
         success: true,
-        message: 'User created successful',
+        message: 'User created',
         data: createdUser,
       });
     } catch (error) {

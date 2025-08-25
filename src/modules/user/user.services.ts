@@ -20,6 +20,7 @@ import { IRefreshTokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
 import EmailQueueJobs from '@/queue/jobs/email.jobs';
+import { OtpUtilsSingleton } from '@/singletons';
 
 const { hashPassword } = PasswordUtils;
 const {
@@ -35,6 +36,8 @@ const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
 const { generateAccessToken, generateRefreshToken, generateRecoverToken } =
   JwtUtils;
 
+const otpUtils = OtpUtilsSingleton();
+
 const UserServices = {
   processSignup: async (payload: IUserPayload) => {
     try {
@@ -45,10 +48,11 @@ const UserServices = {
         specialChars: false,
         upperCaseAlphabets: false,
       });
+      const hashOtp = otpUtils.hashOtp({ otp });
       await Promise.all([
         redisClient.set(
           `user:otp:${createdUser?._id}`,
-          otp,
+          hashOtp,
           'PX',
           calculateMilliseconds(otpExpireAt, 'minute')
         ),
@@ -101,6 +105,7 @@ const UserServices = {
     try {
       const user = await verifyUser({ email });
       await redisClient.del(`user:recover:otp:${userId}`);
+      
       const accessToken = generateAccessToken({
         email: user?.email as string,
         isVerified: user?.isVerified as boolean,
@@ -113,7 +118,7 @@ const UserServices = {
         userId: user?._id as Types.ObjectId,
         name: user?.name as string,
       });
-      return { accessToken: accessToken!, refreshToken: refreshToken! };
+      return { accessToken: accessToken!, refreshToken: refreshToken! };\
     } catch (error) {
       if (error instanceof Error) {
         throw error;

@@ -14,6 +14,7 @@ import { ActivityType } from '@/modules/user/user.enums';
 import { Types } from 'mongoose';
 import { AccountActivityMap } from '@/const';
 import DateUtils from '@/utils/date.utils';
+import { OtpUtilsSingleton } from '@/singletons';
 
 const { comparePassword } = PasswordUtils;
 const { findUserByEmail } = UserRepositories;
@@ -24,6 +25,7 @@ const { loginFailedActivitySavedInDb } = ActivityQueueJobs;
 const { getClientMetaData } = ExtractMetaData;
 
 const { formatDateTime } = DateUtils;
+const otpUtils = OtpUtilsSingleton();
 
 const UserMiddlewares = {
   isSignupUserExist: async (
@@ -123,14 +125,14 @@ const UserMiddlewares = {
     try {
       const { otp } = req.body;
       const user = req?.user as IUser;
-      const storedOtp = await redisClient.get(`user:otp:${user?._id}`);
-      if (!storedOtp) {
+      const hashedOtp = await redisClient.get(`user:otp:${user?._id}`);
+      if (!hashedOtp) {
         res
           .status(400)
           .json({ success: false, message: 'Otp has been expired' });
         return;
       }
-      if (storedOtp !== otp) {
+      if (!otpUtils.compareOtp({ hashedOtp, otp })) {
         res.status(400).json({ success: false, message: 'Invalid otp' });
         return;
       }
