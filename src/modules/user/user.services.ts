@@ -118,7 +118,7 @@ const UserServices = {
   }: TProcessVerifyUserArgs): Promise<IUserPayload> => {
     try {
       const user = await verifyUser({ email });
-      await redisClient.del(`user:recover:otp:${userId}`);
+      await redisClient.del(`user:otp:${userId}`);
       const sid = uuidv4();
       const accessToken = generateAccessToken({
         sid,

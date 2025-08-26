@@ -13,9 +13,10 @@ import { AuthType } from '@/modules/user/user.enums';
 import { env } from '@/env';
 import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
+import { Types } from 'mongoose';
 
 const { cookieOption } = CookieUtils;
-const { getRealIP } = ExtractMetaData;
+const { getRealIP, getClientMetaData } = ExtractMetaData;
 const { CLIENT_BASE_URL } = env;
 
 const {
@@ -74,7 +75,18 @@ const UserControllers = {
   handleVerifyUser: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req?.user as IUser;
-      const { accessToken, refreshToken } = await processVerifyUser(user);
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      console.log({ browser, device, location, os, ip });
+      const { accessToken, refreshToken } = await processVerifyUser({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        userId: user._id as Types.ObjectId,
+        email: user.email as string,
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+      });
       res.cookie(
         'accesstoken',
         accessToken,

@@ -176,7 +176,7 @@ export type TSession = {
   expiredAt: string;
   lastUsedAt: string;
   userId: string;
-  deviceType: DeviceType;
+  deviceType: string;
   browser: string;
   os: string;
   location: string;
@@ -186,7 +186,7 @@ export type TProcessVerifyUserArgs = {
   email: string;
   userId: Types.ObjectId;
   browser: string;
-  deviceType: DeviceType;
+  deviceType: string;
   os: string;
   location: string;
   ipAddress: string;

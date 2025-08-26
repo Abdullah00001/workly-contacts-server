@@ -132,7 +132,7 @@ const UserMiddlewares = {
           .json({ success: false, message: 'Otp has been expired' });
         return;
       }
-      if (!otpUtils.compareOtp({ hashedOtp, otp })) {
+      if (otpUtils.compareOtp({ hashedOtp, otp }) === false) {
         res.status(400).json({ success: false, message: 'Invalid otp' });
         return;
       }
@@ -183,7 +183,7 @@ const UserMiddlewares = {
           name,
           email,
           browser: browser.name as string,
-          device: device.model || 'desktop',
+          device: device.type || 'desktop',
           ip,
           os: os.name as string,
           location: `${location.city} ${location.country}`,
@@ -191,7 +191,7 @@ const UserMiddlewares = {
         };
         const activityPayload: IActivityPayload = {
           browser: browser.name as string,
-          device: device.model || 'desktop',
+          device: device.type || 'desktop',
           os: os.name as string,
           location: `${location.city} ${location.country}`,
           ipAddress: ip,
