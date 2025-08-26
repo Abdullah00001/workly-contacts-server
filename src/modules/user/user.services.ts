@@ -1,5 +1,6 @@
 import UserRepositories from '@/modules/user/user.repositories';
 import IUser, {
+  IActivityPayload,
   IProcessFindUserReturn,
   IProcessRecoverAccountPayload,
   IResetPasswordServicePayload,
@@ -7,11 +8,13 @@ import IUser, {
   IUserPayload,
   TProcessVerifyUserArgs,
   TSession,
+  TSignupSuccessEmailPayloadData,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
 import {
   accessTokenExpiresIn,
+  AccountActivityMap,
   otpExpireAt,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
@@ -25,14 +28,17 @@ import EmailQueueJobs from '@/queue/jobs/email.jobs';
 import { OtpUtilsSingleton } from '@/singletons';
 import { v4 as uuidv4 } from 'uuid';
 import DateUtils from '@/utils/date.utils';
+import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
+import { ActivityType } from '@/modules/user/user.enums';
 
 const { hashPassword } = PasswordUtils;
 const {
   addSendAccountVerificationOtpEmailToQueue,
   addSendPasswordResetNotificationEmailToQueue,
   addSendAccountRecoverOtpEmailToQueue,
+  addSendSignupSuccessNotificationEmailToQueue,
 } = EmailQueueJobs;
-
+const { signupSuccessActivitySavedInDb } = ActivityQueueJobs;
 const { createNewUser, verifyUser, findUserByEmail, resetPassword } =
   UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
@@ -108,6 +114,7 @@ const UserServices = {
     deviceType,
     location,
     os,
+    ipAddress,
   }: TProcessVerifyUserArgs): Promise<IUserPayload> => {
     try {
       const user = await verifyUser({ email });
@@ -132,7 +139,32 @@ const UserServices = {
         expiredAt: calculateFutureDate(refreshTokenExpiresIn),
         lastUsedAt: new Date().toISOString(),
       };
-      
+      const emailPayload: TSignupSuccessEmailPayloadData = {
+        name: user?.name as string,
+        email,
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.SIGNUP_SUCCESS,
+        title: AccountActivityMap.SIGNUP_SUCCESS.title,
+        description: AccountActivityMap.SIGNUP_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: user?._id as Types.ObjectId,
+      };
+      await Promise.all([
+        redisClient.set(
+          `user:${user?._id}:sessions:${sid}`,
+          JSON.stringify(session),
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        ),
+        redisClient.sadd(`user:${user?._id}:sessions`, sid),
+        signupSuccessActivitySavedInDb(activityPayload),
+        addSendSignupSuccessNotificationEmailToQueue(emailPayload),
+      ]);
       return { accessToken: accessToken!, refreshToken: refreshToken! };
     } catch (error) {
       if (error instanceof Error) {

@@ -14,6 +14,11 @@ const worker = new Worker(
         await newActivity.save();
         return;
       }
+      if (name === 'save-signup-activity-to-db') {
+        const newActivity = new Activity(data as IActivityPayload);
+        await newActivity.save();
+        return;
+      }
     } catch (error) {
       logger.error('Worker job failed', { jobName: name, jobId: id, error });
       throw error;

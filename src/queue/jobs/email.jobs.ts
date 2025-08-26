@@ -1,6 +1,9 @@
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import { IVerificationEmailData } from '@/interfaces/verificationEmailData.interfaces';
-import { IResetPasswordSendEmailPayload } from '@/modules/user/user.interfaces';
+import {
+  IResetPasswordSendEmailPayload,
+  TSignupSuccessEmailPayloadData,
+} from '@/modules/user/user.interfaces';
 import { EmailQueue } from '@/queue/queues';
 
 const EmailQueueJobs = {
@@ -33,6 +36,15 @@ const EmailQueueJobs = {
   },
   loginFailedNotificationEmailToQueue: async (data: ILoginEmailPayload) => {
     await EmailQueue.add('send-login-failed-notification-email', data, {
+      attempts: 3,
+      removeOnComplete: true,
+      backoff: { type: 'exponential', delay: 3000 },
+    });
+  },
+  addSendSignupSuccessNotificationEmailToQueue: async (
+    data: TSignupSuccessEmailPayloadData
+  ) => {
+    await EmailQueue.add('send-signup-success-notification-email', data, {
       attempts: 3,
       removeOnComplete: true,
       backoff: { type: 'exponential', delay: 3000 },

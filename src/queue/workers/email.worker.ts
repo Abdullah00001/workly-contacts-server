@@ -15,10 +15,12 @@ import { accountRecoveryEmailTemplate } from '@/templates/accountRecoveryEmailTe
 import {
   IPasswordResetNotificationTemplateData,
   IResetPasswordSendEmailPayload,
+  TSignupSuccessEmailPayloadData,
 } from '@/modules/user/user.interfaces';
 import { passwordResetNotificationTemplate } from '@/templates/passwordResetNotificationTemplate';
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import failedLoginAttemptEmailTemplate from '@/templates/failedLoginAttemptEmailTemplate';
+import signupSuccessEmailTemplate from '@/templates/signupSuccessEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 
@@ -97,6 +99,16 @@ const worker = new Worker(
             'Security Alert: Some One Try to Access Your Account',
             personalizedTemplate
           )
+        );
+        return;
+      }
+      if (name === 'send-signup-success-notification-email') {
+        const { email, name } = data as TSignupSuccessEmailPayloadData;
+        const templateData = { email, name };
+        const template = Handlebars.compile(signupSuccessEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(email, 'Welcome To Workly Contacts', personalizedTemplate)
         );
         return;
       }

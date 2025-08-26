@@ -189,6 +189,12 @@ export type TProcessVerifyUserArgs = {
   deviceType: DeviceType;
   os: string;
   location: string;
+  ipAddress: string;
+};
+
+export type TSignupSuccessEmailPayloadData = {
+  email: string;
+  name: string;
 };
 
 export default IUser;

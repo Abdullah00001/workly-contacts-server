@@ -300,7 +300,7 @@ const signupSuccessEmailTemplate = `
         
         <!-- Main Content -->
         <div class="content">
-            <div class="greeting">Hi {{firstName}},</div>
+            <div class="greeting">Hi {{name}},</div>
             
             <div class="welcome-text">
                 <strong>Welcome to Workly Contacts</strong> — we're beyond excited to have you join our growing community of people who value clean, organized, and meaningful contact management. This isn't just another signup — it's the beginning of a smarter, more personal way to stay connected.
