@@ -14,6 +14,7 @@ import { env } from '@/env';
 import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
 import { Types } from 'mongoose';
+import { CreateUserResponseDTO } from '@/modules/user/user.dto';
 
 const { cookieOption } = CookieUtils;
 const { getRealIP, getClientMetaData } = ExtractMetaData;
@@ -53,10 +54,11 @@ const UserControllers = {
         password: { secret: password, change_at: new Date().toISOString() },
         provider: AuthType.LOCAL,
       });
+      const createdUserData = CreateUserResponseDTO.fromEntity(createdUser);
       res.status(201).json({
         success: true,
         message: 'User created',
-        data: createdUser,
+        data: createdUserData,
       });
     } catch (error) {
       logger.error(error);
