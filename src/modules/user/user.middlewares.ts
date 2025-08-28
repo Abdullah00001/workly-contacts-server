@@ -12,9 +12,14 @@ import ExtractMetaData from '@/utils/metaData.utils';
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import { ActivityType } from '@/modules/user/user.enums';
 import { Types } from 'mongoose';
-import { AccountActivityMap } from '@/const';
+import {
+  AccountActivityMap,
+  otpRateLimitMaxCount,
+  otpRateLimitSlidingWindow,
+} from '@/const';
 import DateUtils from '@/utils/date.utils';
 import { OtpUtilsSingleton } from '@/singletons';
+import CalculationUtils from '@/utils/calculation.utils';
 
 const { comparePassword } = PasswordUtils;
 const { findUserByEmail } = UserRepositories;
@@ -23,10 +28,9 @@ const { verifyAccessToken, verifyRefreshToken, verifyRecoverToken } = JwtUtils;
 const { loginFailedNotificationEmailToQueue } = EmailQueueJobs;
 const { loginFailedActivitySavedInDb } = ActivityQueueJobs;
 const { getClientMetaData } = ExtractMetaData;
-
 const { formatDateTime } = DateUtils;
 const otpUtils = OtpUtilsSingleton();
-
+const { expiresInTimeUnitToMs } = CalculationUtils;
 const UserMiddlewares = {
   isSignupUserExist: async (
     req: Request,
@@ -60,11 +64,11 @@ const UserMiddlewares = {
       const { email } = req.body;
       const isUserExist = await findUserByEmail(email);
       if (!isUserExist) {
-        res.status(404).json({ status: 'error', message: 'User Not Found' });
+        res.status(404).json({ success: false, message: 'User Not Found' });
         return;
       }
       if (!isUserExist.isVerified) {
-        res.status(400).json({ status: 'error', message: 'User Not Verified' });
+        res.status(400).json({ success: false, message: 'User Not Verified' });
         return;
       }
       req.user = isUserExist;
@@ -86,7 +90,7 @@ const UserMiddlewares = {
       const { email } = req.body;
       const isUserExist = await findUserByEmail(email);
       if (!isUserExist) {
-        res.status(404).json({ status: 'error', message: 'User Not Found' });
+        res.status(404).json({ success: false, message: 'User Not Found' });
         return;
       }
       req.user = isUserExist;
@@ -204,7 +208,7 @@ const UserMiddlewares = {
           loginFailedNotificationEmailToQueue(emailPayload),
           loginFailedActivitySavedInDb(activityPayload),
         ]);
-        res.status(400).json({ status: 'error', message: 'Invalid Password' });
+        res.status(400).json({ success: false, message: 'Invalid Password' });
         return;
       }
       next();
@@ -223,7 +227,7 @@ const UserMiddlewares = {
       const token = req?.cookies?.accesstoken;
       if (!token) {
         res.status(401).json({
-          status: 'error',
+          success: false,
           message: 'Unauthorize Request',
           error: 'Access Token is missing',
         });
@@ -234,7 +238,7 @@ const UserMiddlewares = {
       );
       if (isBlacklisted) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
           error: 'Accesstoken has been revoked',
         });
@@ -243,7 +247,7 @@ const UserMiddlewares = {
       const decoded = verifyAccessToken(token);
       if (!decoded) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
           error: 'Access Token expired or invalid',
         });
@@ -270,7 +274,7 @@ const UserMiddlewares = {
       const token = req.cookies?.refreshtoken;
       if (!token) {
         res.status(401).json({
-          status: 'error',
+          success: false,
           message: 'Unauthorize Request',
           error: 'Refresh Token is missing',
         });
@@ -281,7 +285,7 @@ const UserMiddlewares = {
       );
       if (isBlacklisted) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
           error: 'Refresh Token has been revoked',
         });
@@ -290,7 +294,7 @@ const UserMiddlewares = {
       const decoded = verifyRefreshToken(token);
       if (!decoded) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
           error: 'Refresh Token expired or invalid',
         });
@@ -315,7 +319,7 @@ const UserMiddlewares = {
       const token = req?.cookies?.r_stp1;
       if (!token) {
         res.status(401).json({
-          status: 'error',
+          success: false,
           message: 'Unauthorize Request',
         });
         return;
@@ -323,7 +327,7 @@ const UserMiddlewares = {
       const isBlacklisted = await redisClient.get(`blacklist:r_stp1:${token}`);
       if (isBlacklisted) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
         });
         return;
@@ -331,7 +335,7 @@ const UserMiddlewares = {
       const decoded = verifyRecoverToken(token);
       if (!decoded) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
         });
         return;
@@ -353,7 +357,7 @@ const UserMiddlewares = {
       const token = req?.cookies?.r_stp2;
       if (!token) {
         res.status(401).json({
-          status: 'error',
+          success: false,
           message: 'Unauthorize Request',
         });
         return;
@@ -361,7 +365,7 @@ const UserMiddlewares = {
       const isBlacklisted = await redisClient.get(`blacklist:r_stp2:${token}`);
       if (isBlacklisted) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
         });
         return;
@@ -369,7 +373,7 @@ const UserMiddlewares = {
       const decoded = verifyRecoverToken(token);
       if (!decoded) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
         });
         return;
@@ -391,7 +395,7 @@ const UserMiddlewares = {
       const token = req?.cookies?.r_stp3;
       if (!token) {
         res.status(401).json({
-          status: 'error',
+          success: false,
           message: 'Unauthorize Request',
         });
         return;
@@ -399,7 +403,7 @@ const UserMiddlewares = {
       const isBlacklisted = await redisClient.get(`blacklist:r_stp3:${token}`);
       if (isBlacklisted) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
         });
         return;
@@ -407,7 +411,7 @@ const UserMiddlewares = {
       const decoded = verifyRecoverToken(token);
       if (!decoded) {
         res.status(403).json({
-          status: 'error',
+          success: false,
           message: 'Permission Denied',
         });
         return;
@@ -420,6 +424,40 @@ const UserMiddlewares = {
         next(error);
       } else {
         logger.error('Unknown Error Occurred In Check r_stp3 Token Middleware');
+        next(error);
+      }
+    }
+  },
+  otpRateLimiter: async (req: Request, res: Response, next: NextFunction) => {
+    const { email } = req.body;
+    const key = `otp:limit:${email}`;
+    try {
+      const isKeyExist = await redisClient.exists(key);
+      if (!isKeyExist) {
+        await redisClient.set(
+          key,
+          1,
+          'PX',
+          expiresInTimeUnitToMs(otpRateLimitSlidingWindow)
+        );
+        next();
+      } else {
+        const limitCount = await redisClient.incr(key);
+        if (limitCount <= otpRateLimitMaxCount) {
+          next();
+        } else {
+          res.status(429).json({
+            success: false,
+            message: 'Too Many Request,Try Again Latter',
+          });
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error('Unknown Error Occurred In Otp Rate Limiter Middleware');
         next(error);
       }
     }
