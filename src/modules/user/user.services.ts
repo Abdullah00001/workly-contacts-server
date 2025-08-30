@@ -20,7 +20,7 @@ import {
   refreshTokenExpiresIn,
 } from '@/const';
 import JwtUtils from '@/utils/jwt.utils';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { IRefreshTokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
@@ -39,8 +39,13 @@ const {
   addSendSignupSuccessNotificationEmailToQueue,
 } = EmailQueueJobs;
 const { signupSuccessActivitySavedInDb } = ActivityQueueJobs;
-const { createNewUser, verifyUser, findUserByEmail, resetPassword } =
-  UserRepositories;
+const {
+  createNewUser,
+  verifyUser,
+  findUserByEmail,
+  resetPassword,
+  findUserById,
+} = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
 const { calculateFutureDate } = DateUtils;
 const {
@@ -115,7 +120,6 @@ const UserServices = {
   //   return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   // },
   processVerifyUser: async ({
-    email,
     userId,
     browser,
     deviceType,
@@ -124,8 +128,9 @@ const UserServices = {
     ipAddress,
   }: TProcessVerifyUserArgs): Promise<IUserPayload> => {
     try {
-      const user = await verifyUser({ email });
-      await redisClient.del(`user:otp:${userId}`);
+      const user = await verifyUser({
+        userId: new mongoose.Types.ObjectId(userId),
+      });
       const sid = uuidv4();
       const accessToken = generateAccessToken({
         sid,
@@ -148,7 +153,7 @@ const UserServices = {
       };
       const emailPayload: TSignupSuccessEmailPayloadData = {
         name: user?.name as string,
-        email,
+        email: user?.email as string,
       };
       const activityPayload: IActivityPayload = {
         activityType: ActivityType.SIGNUP_SUCCESS,
@@ -161,14 +166,20 @@ const UserServices = {
         os,
         user: user?._id as Types.ObjectId,
       };
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `user:${user?._id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.sadd(`user:${user?._id}:sessions`, sid);
+      redisPipeLine.del(`user:otp:${userId}`);
+      redisPipeLine.del(`otp:limit:${userId}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${userId}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${userId}:count`);
       await Promise.all([
-        redisClient.set(
-          `user:${user?._id}:sessions:${sid}`,
-          JSON.stringify(session),
-          'PX',
-          expiresInTimeUnitToMs(refreshTokenExpiresIn)
-        ),
-        redisClient.sadd(`user:${user?._id}:sessions`, sid),
+        redisPipeLine.exec(),
         signupSuccessActivitySavedInDb(activityPayload),
         addSendSignupSuccessNotificationEmailToQueue(emailPayload),
       ]);
@@ -181,18 +192,20 @@ const UserServices = {
       }
     }
   },
-  processResend: async ({ email, name, _id }: IUser) => {
+  processResend: async (sub: string) => {
     try {
+      const { email, name, _id } = await findUserById(sub);
       const otp = generate(6, {
         digits: true,
         lowerCaseAlphabets: false,
         specialChars: false,
         upperCaseAlphabets: false,
       });
+      const hashOtp = otpUtils.hashOtp({ otp });
       await Promise.all([
         redisClient.set(
           `user:otp:${_id}`,
-          otp,
+          hashOtp,
           'PX',
           calculateMilliseconds(otpExpireAt, 'minute')
         ),

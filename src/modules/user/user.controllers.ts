@@ -16,6 +16,7 @@ import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
 import { Types } from 'mongoose';
 import { CreateUserResponseDTO } from '@/modules/user/user.dto';
+import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
 
 const { cookieOption } = CookieUtils;
 const { getRealIP, getClientMetaData } = ExtractMetaData;
@@ -43,7 +44,7 @@ const UserControllers = {
    * @param res request
    * @param next next function
    * This Handler Accept name,email,password as string in req.body object.we destructure the object and pass to processSignup service.processSignup service return the created user or if error occurred throw error.
-   * @returns successful user creation processSignup return us created user and we send the response with success flag,short message and in data with created user object.
+   * @returns successful user creation processSignup return us created user and we send the response with activation token in cookie and with success flag,short message and in data with created user object.
    * @error on error we simply call the next function with error
    */
   handleSignUp: async (req: Request, res: Response, next: NextFunction) => {
@@ -71,30 +72,29 @@ const UserControllers = {
       next(error);
     }
   },
-  handleCheck: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      res.status(204).send();
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
+  // handleCheck: (req: Request, res: Response, next: NextFunction) => {
+  //   try {
+  //     res.status(204).send();
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
   handleVerifyUser: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req?.user as IUser;
+      const { sub } = req?.decoded as TokenPayload;
       const { browser, device, location, os, ip } =
         await getClientMetaData(req);
-      console.log({ browser, device, location, os, ip });
       const { accessToken, refreshToken } = await processVerifyUser({
         browser: browser.name as string,
         deviceType: device.type || 'desktop',
-        userId: user._id as Types.ObjectId,
-        email: user.email as string,
+        userId: sub,
         ipAddress: ip,
         location: `${location.city} ${location.country}`,
         os: os.name as string,
       });
+      res.clearCookie('actv_token', cookieOption(activationTokenExpiresIn));
       res.cookie(
         'accesstoken',
         accessToken,
@@ -116,8 +116,8 @@ const UserControllers = {
   },
   handleResend: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req?.user as IUser;
-      await processResend(user);
+      const { sub } = req?.decoded;
+      await processResend(sub);
       res.status(200).json({
         success: true,
         message: 'Verification Email Resend Successful',

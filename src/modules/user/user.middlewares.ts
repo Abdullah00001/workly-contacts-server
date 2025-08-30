@@ -24,7 +24,12 @@ import CalculationUtils from '@/utils/calculation.utils';
 
 const { comparePassword } = PasswordUtils;
 const { findUserByEmail } = UserRepositories;
-const { verifyAccessToken, verifyRefreshToken, verifyRecoverToken } = JwtUtils;
+const {
+  verifyAccessToken,
+  verifyRefreshToken,
+  verifyRecoverToken,
+  verifyActivationToken,
+} = JwtUtils;
 
 const { loginFailedNotificationEmailToQueue } = EmailQueueJobs;
 const { loginFailedActivitySavedInDb } = ActivityQueueJobs;
@@ -129,8 +134,8 @@ const UserMiddlewares = {
   checkOtp: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { otp } = req.body;
-      const user = req?.user as IUser;
-      const hashedOtp = await redisClient.get(`user:otp:${user?._id}`);
+      const { sub } = req?.decoded as TokenPayload;
+      const hashedOtp = await redisClient.get(`user:otp:${sub}`);
       if (!hashedOtp) {
         res
           .status(400)
@@ -430,8 +435,8 @@ const UserMiddlewares = {
     }
   },
   otpRateLimiter: async (req: Request, res: Response, next: NextFunction) => {
-    const { email } = req.body;
-    const key = `otp:limit:${email}`;
+    const { sub } = req.decoded as TokenPayload;
+    const key = `otp:limit:${sub}`;
     try {
       const isKeyExist = await redisClient.exists(key);
       if (!isKeyExist) {
@@ -469,9 +474,9 @@ const UserMiddlewares = {
     res: Response,
     next: NextFunction
   ) => {
-    const { email } = req.body;
-    const ttlKey = `otp:resendOtpEmailCoolDown:${email}`;
-    const countKey = `otp:resendOtpEmailCoolDown:${email}:count`;
+    const { sub } = req?.decoded;
+    const ttlKey = `otp:resendOtpEmailCoolDown:${sub}`;
+    const countKey = `otp:resendOtpEmailCoolDown:${sub}:count`;
     try {
       const isTtlKeyExist = await redisClient.exists(ttlKey);
       if (isTtlKeyExist) {
@@ -486,7 +491,7 @@ const UserMiddlewares = {
         const initialExpireAt =
           1 * expiresInTimeUnitToMs(resendOtpEmailCoolDownWindow);
         const pipeline = redisClient.pipeline();
-        pipeline.set(ttlKey, email, 'PX', initialExpireAt);
+        pipeline.set(ttlKey, sub, 'PX', initialExpireAt);
         pipeline.set(countKey, 1, 'PX', 1 * 60 * 60 * 1000);
         await pipeline.exec();
         next();
@@ -496,11 +501,57 @@ const UserMiddlewares = {
         const coolDownCount = currentCoolDownCount + 1;
         const expireAt =
           coolDownCount * expiresInTimeUnitToMs(resendOtpEmailCoolDownWindow);
-        pipeline.set(ttlKey, email, 'PX', expireAt);
+        pipeline.set(ttlKey, sub, 'PX', expireAt);
         pipeline.set(countKey, coolDownCount, 'KEEPTTL');
         await pipeline.exec();
         next();
       }
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error('Unknown Error Occurred In Otp Rate Limiter Middleware');
+        next(new Error('Unknown Error In resendOtpEmailCoolDown middleware'));
+      }
+    }
+  },
+  checkActivationToken: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const token = req?.cookies?.actv_token;
+      if (!token) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorize Request',
+          error: 'Refresh Token is missing',
+        });
+        return;
+      }
+      const isBlacklisted = await redisClient.get(
+        `blacklist:actv_token:${token}`
+      );
+      if (isBlacklisted) {
+        res.status(403).json({
+          success: false,
+          message: 'Permission Denied',
+          error: 'actv Token has been revoked',
+        });
+        return;
+      }
+      const decoded = verifyActivationToken(token);
+      if (!decoded) {
+        res.status(403).json({
+          success: false,
+          message: 'Permission Denied',
+        });
+        return;
+      }
+      req.decoded = decoded as TokenPayload;
+      next();
     } catch (error) {
       if (error instanceof Error) {
         logger.error(error);

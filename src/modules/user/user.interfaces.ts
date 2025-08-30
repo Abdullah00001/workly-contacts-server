@@ -87,6 +87,32 @@ export interface IGeoLocation {
   hosting: boolean;
 }
 
+export type TGeoLocation = {
+  query?: string;
+  status?: 'success' | 'fail';
+  continent?: string;
+  continentCode?: string;
+  country?: string;
+  countryCode?: string;
+  region?: string;
+  regionName?: string;
+  city?: string;
+  district?: string;
+  zip?: string;
+  lat?: number;
+  lon?: number;
+  timezone?: string;
+  offset?: number;
+  currency?: string;
+  isp?: string;
+  org?: string;
+  as?: string;
+  asname?: string;
+  mobile?: boolean;
+  proxy?: boolean;
+  hosting?: boolean;
+};
+
 export interface IGetClientMetaData {
   browser: UAParser.IBrowser;
   device: UAParser.IDevice;
@@ -183,8 +209,7 @@ export type TSession = {
 };
 
 export type TProcessVerifyUserArgs = {
-  email: string;
-  userId: Types.ObjectId;
+  userId: string;
   browser: string;
   deviceType: string;
   os: string;
