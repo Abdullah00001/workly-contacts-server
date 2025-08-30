@@ -43,8 +43,12 @@ const { createNewUser, verifyUser, findUserByEmail, resetPassword } =
   UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
 const { calculateFutureDate } = DateUtils;
-const { generateAccessToken, generateRefreshToken, generateRecoverToken } =
-  JwtUtils;
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  generateRecoverToken,
+  generateActivationToken,
+} = JwtUtils;
 const otpUtils = OtpUtilsSingleton();
 
 const UserServices = {
@@ -56,6 +60,9 @@ const UserServices = {
         lowerCaseAlphabets: false,
         specialChars: false,
         upperCaseAlphabets: false,
+      });
+      const activationToken = generateActivationToken({
+        sub: createdUser?._id as string,
       });
       const hashOtp = otpUtils.hashOtp({ otp });
       await Promise.all([
@@ -72,7 +79,7 @@ const UserServices = {
           otp,
         }),
       ]);
-      return createdUser;
+      return { createdUser, activationToken };
     } catch (error) {
       if (error instanceof Error) {
         throw error;

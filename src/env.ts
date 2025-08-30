@@ -21,5 +21,8 @@ export const env: IEnvConfig = {
   GOOGLE_CLIENT_SECRET: getEnvVariable('GOOGLE_CLIENT_SECRET'),
   CALLBACK_URL: getEnvVariable('CALLBACK_URL'),
   CLIENT_BASE_URL: getEnvVariable('CLIENT_BASE_URL'),
-  OTP_HASH_SECRET:getEnvVariable('OTP_HASH_SECRET')
+  OTP_HASH_SECRET: getEnvVariable('OTP_HASH_SECRET'),
+  JWT_ACTIVATION_TOKEN_SECRET_KEY: getEnvVariable(
+    'JWT_ACTIVATION_TOKEN_SECRET_KEY'
+  ),
 };

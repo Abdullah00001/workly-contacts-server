@@ -19,6 +19,7 @@ const {
   checkR_stp2Token,
   checkR_stp3Token,
   otpRateLimiter,
+  resendOtpEmailCoolDown,
 } = UserMiddlewares;
 const {
   handleSignUp,
@@ -44,8 +45,10 @@ const router = Router();
 router.route('/auth/signup').post(isSignupUserExist, handleSignUp);
 router
   .route('/auth/verify')
-  .post(otpRateLimiter, isUserExist, checkOtp, handleVerifyUser);
-router.route('/auth/resend').post(isUserExist, handleResend);
+  .post(otpRateLimiter, checkOtp, isUserExist, handleVerifyUser);
+router
+  .route('/auth/resend')
+  .post(resendOtpEmailCoolDown, isUserExist, handleResend);
 // router
 //   .route('/auth/login')
 //   .post(isUserExistAndVerified, checkPassword, handleLogin);

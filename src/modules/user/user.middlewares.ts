@@ -16,6 +16,7 @@ import {
   AccountActivityMap,
   otpRateLimitMaxCount,
   otpRateLimitSlidingWindow,
+  resendOtpEmailCoolDownWindow,
 } from '@/const';
 import DateUtils from '@/utils/date.utils';
 import { OtpUtilsSingleton } from '@/singletons';
@@ -448,8 +449,9 @@ const UserMiddlewares = {
         } else {
           res.status(429).json({
             success: false,
-            message: 'Too Many Request,Try Again Latter',
+            message: 'Too Many Request,Try Again Later',
           });
+          return;
         }
       }
     } catch (error) {
@@ -459,6 +461,53 @@ const UserMiddlewares = {
       } else {
         logger.error('Unknown Error Occurred In Otp Rate Limiter Middleware');
         next(error);
+      }
+    }
+  },
+  resendOtpEmailCoolDown: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { email } = req.body;
+    const ttlKey = `otp:resendOtpEmailCoolDown:${email}`;
+    const countKey = `otp:resendOtpEmailCoolDown:${email}:count`;
+    try {
+      const isTtlKeyExist = await redisClient.exists(ttlKey);
+      if (isTtlKeyExist) {
+        res.status(400).json({
+          success: false,
+          message: `Try Again Later`,
+        });
+        return;
+      }
+      const isCountKeyExist = await redisClient.exists(countKey);
+      if (!isCountKeyExist) {
+        const initialExpireAt =
+          1 * expiresInTimeUnitToMs(resendOtpEmailCoolDownWindow);
+        const pipeline = redisClient.pipeline();
+        pipeline.set(ttlKey, email, 'PX', initialExpireAt);
+        pipeline.set(countKey, 1, 'PX', 1 * 60 * 60 * 1000);
+        await pipeline.exec();
+        next();
+      } else {
+        const pipeline = redisClient.pipeline();
+        const currentCoolDownCount = Number(await redisClient.get(countKey));
+        const coolDownCount = currentCoolDownCount + 1;
+        const expireAt =
+          coolDownCount * expiresInTimeUnitToMs(resendOtpEmailCoolDownWindow);
+        pipeline.set(ttlKey, email, 'PX', expireAt);
+        pipeline.set(countKey, coolDownCount, 'KEEPTTL');
+        await pipeline.exec();
+        next();
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error('Unknown Error Occurred In Otp Rate Limiter Middleware');
+        next(new Error('Unknown Error In resendOtpEmailCoolDown middleware'));
       }
     }
   },

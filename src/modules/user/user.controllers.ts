@@ -5,6 +5,7 @@ import IUser from '@/modules/user/user.interfaces';
 import CookieUtils from '@/utils/cookie.utils';
 import {
   accessTokenExpiresIn,
+  activationTokenExpiresIn,
   getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
@@ -48,13 +49,18 @@ const UserControllers = {
   handleSignUp: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, email, password } = req.body;
-      const createdUser = await processSignup({
+      const { activationToken, createdUser } = await processSignup({
         name,
         email,
         password: { secret: password, change_at: new Date().toISOString() },
         provider: AuthType.LOCAL,
       });
       const createdUserData = CreateUserResponseDTO.fromEntity(createdUser);
+      res.cookie(
+        'actv_token',
+        activationToken,
+        cookieOption(activationTokenExpiresIn)
+      );
       res.status(201).json({
         success: true,
         message: 'User created',
