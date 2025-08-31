@@ -4,7 +4,7 @@ const failedLoginAttemptEmailTemplate = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Notification - Amar Contacts</title>
+    <title>Login Notification - Workly Contacts</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -292,7 +292,7 @@ const failedLoginAttemptEmailTemplate = `
                     <!-- Header -->
                     <tr>
                         <td class="header">
-                            <div class="logo">Amar Contacts</div>
+                            <div class="logo">Workly Contacts</div>
                             <div class="tagline">Secure Contact Management</div>
                         </td>
                     </tr>
@@ -303,7 +303,7 @@ const failedLoginAttemptEmailTemplate = `
                             <div class="greeting">Hi {{name}},</div>
                             
                             <div class="message">
-                                We detected a <strong>failed login attempt</strong> to your <strong>Amar Contacts</strong> account. Your security is important to us, so we're alerting you about this suspicious activity.
+                                We detected a <strong>failed login attempt</strong> to your <strong>Workly Contacts</strong> account. Your security is important to us, so we're alerting you about this suspicious activity.
                             </div>
                             
                             <!-- Details Card -->
@@ -401,7 +401,7 @@ const failedLoginAttemptEmailTemplate = `
                             
                             <div class="signature">
                                 Stay safe,<br>
-                                <strong>The Amar Contacts Team</strong>
+                                <strong>The Workly Contacts Team</strong>
                             </div>
                         </td>
                     </tr>

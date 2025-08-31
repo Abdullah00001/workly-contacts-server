@@ -6,15 +6,17 @@ export const corsWhiteList = [
   'http://localhost:3000',
   'https://amar-contacts.onrender.com',
   'https://amar-contacts-staging-client.onrender.com',
-  'https://amar-contacts.vercel.app',
-  'https://amar-contacts-staging-client.vercel.app',
-  'https://amar-contacts-git-development-abdullah00001s-projects.vercel.app',
+  'https://contacts.workly.ink',
   'http://10.0.0.103:5173',
 ];
 export const accessTokenExpiresIn = '1d';
 export const refreshTokenExpiresIn = '7d';
 export const recoverSessionExpiresIn = '1d';
+export const activationTokenExpiresIn = '1d';
 export const serverCacheExpiredIn = '5m';
+export const otpRateLimitMaxCount = 15;
+export const otpRateLimitSlidingWindow = '1m';
+export const resendOtpEmailCoolDownWindow = '2m';
 export const otpExpireAt = 4;
 export const saltRound = 10;
 export const emailRegex = /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/;
@@ -33,9 +35,9 @@ export const getLocationFromIP = async (ip: string) => {
   }
 };
 
-export const dashboardUrl = 'http://amar-contacts.vercel.app';
-export const profileUrl = 'http://amar-contacts.vercel.app/me';
-export const supportEmail = 'abdullahbinomarchowdhury02@gmail.com';
+export const dashboardUrl = 'https://contacts.workly.ink/';
+export const profileUrl = 'https://contacts.workly.ink/';
+export const supportEmail = 'amarcontacts79@gmail.com';
 
 export const AccountActivityMap: Record<
   ActivityType,
@@ -55,13 +57,20 @@ export const AccountActivityMap: Record<
 
   [ActivityType.SIGNUP_SUCCESS]: {
     title: 'Account Was Created',
-    description:
-      'Your Amar Contacts account was successfully registered. If you did not sign up, please contact support to investigate unauthorized activity.',
+    description: 'Your Workly Contacts account was successfully registered.',
   },
 
   [ActivityType.PASSWORD_RESET]: {
     title: 'Password Was Changed',
     description:
       'Your account password was changed successfully. If you did not perform this action, please secure your account by resetting your password and reviewing recent activity.',
+  },
+  [ActivityType.ACCOUNT_LOCKED]: {
+    title: '',
+    description: '',
+  },
+  [ActivityType.ACCOUNT_ACTIVE]: {
+    title: '',
+    description: '',
   },
 };

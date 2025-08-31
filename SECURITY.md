@@ -2,7 +2,7 @@
 
 ## Overview
 
-Security is a top priority for the Amar Contacts project. This document outlines the security measures implemented and the process for reporting security vulnerabilities.
+Security is a top priority for the Workly Contacts project. This document outlines the security measures implemented and the process for reporting security vulnerabilities.
 
 ## Supported Versions
 
@@ -77,7 +77,7 @@ If you discover a security vulnerability in this codebase that could be educatio
 ### Preferred Method
 
 1. **Email**: Send details to [your-email@example.com]
-2. **Subject Line**: `[SECURITY] Amar Contacts - [Brief Description]`
+2. **Subject Line**: `[SECURITY] Workly Contacts - [Brief Description]`
 3. **Include**:
    - Detailed description of the vulnerability
    - Steps to reproduce the issue

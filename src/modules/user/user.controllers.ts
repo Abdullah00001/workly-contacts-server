@@ -5,17 +5,22 @@ import IUser from '@/modules/user/user.interfaces';
 import CookieUtils from '@/utils/cookie.utils';
 import {
   accessTokenExpiresIn,
+  activationTokenExpiresIn,
   getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
 } from '@/const';
-import { AuthType } from '@/modules/user/user.enums';
+import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { env } from '@/env';
 import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
+import { Types } from 'mongoose';
+import { CreateUserResponseDTO } from '@/modules/user/user.dto';
+import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
+import { TRequestUser } from '@/types/express';
 
 const { cookieOption } = CookieUtils;
-const { getRealIP } = ExtractMetaData;
+const { getRealIP, getClientMetaData } = ExtractMetaData;
 const { CLIENT_BASE_URL } = env;
 
 const {
@@ -40,22 +45,28 @@ const UserControllers = {
    * @param res request
    * @param next next function
    * This Handler Accept name,email,password as string in req.body object.we destructure the object and pass to processSignup service.processSignup service return the created user or if error occurred throw error.
-   * @returns successful user creation processSignup return us created user and we send the response with success flag,short message and in data with created user object.
+   * @returns successful user creation processSignup return us created user and we send the response with activation token in cookie and with success flag,short message and in data with created user object.
    * @error on error we simply call the next function with error
    */
   handleSignUp: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, email, password } = req.body;
-      const createdUser = await processSignup({
+      const { activationToken, createdUser } = await processSignup({
         name,
         email,
         password: { secret: password, change_at: new Date().toISOString() },
         provider: AuthType.LOCAL,
       });
+      const createdUserData = CreateUserResponseDTO.fromEntity(createdUser);
+      res.cookie(
+        'actv_token',
+        activationToken,
+        cookieOption(activationTokenExpiresIn)
+      );
       res.status(201).json({
         success: true,
-        message: 'User signup successful',
-        data: createdUser,
+        message: 'User created',
+        data: createdUserData,
       });
     } catch (error) {
       logger.error(error);
@@ -73,8 +84,18 @@ const UserControllers = {
   },
   handleVerifyUser: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req?.user as IUser;
-      const { accessToken, refreshToken } = await processVerifyUser(user);
+      const { sub } = req?.decoded as TokenPayload;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processVerifyUser({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        userId: sub,
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+      });
+      res.clearCookie('actv_token', cookieOption(activationTokenExpiresIn));
       res.cookie(
         'accesstoken',
         accessToken,
@@ -96,8 +117,8 @@ const UserControllers = {
   },
   handleResend: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req?.user as IUser;
-      await processResend(user);
+      const { sub } = req?.decoded;
+      await processResend(sub);
       res.status(200).json({
         success: true,
         message: 'Verification Email Resend Successful',
@@ -107,9 +128,19 @@ const UserControllers = {
       next(error);
     }
   },
-  handleLogin: (req: Request, res: Response, next: NextFunction) => {
+  handleLogin: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { accessToken, refreshToken } = processLogin(req.user as IUser);
+      const { user } = req.user as TRequestUser;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processLogin({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        user,
+      });
       res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
       res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
       res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
@@ -392,14 +423,24 @@ const UserControllers = {
       next(error);
     }
   },
-  handleProcessOAuthCallback: (
+  handleProcessOAuthCallback: async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
-    const user = req.user as IUser;
+    const { user, activity } = req.user as TRequestUser;
     try {
-      const { accessToken, refreshToken } = processOAuthCallback(user);
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processOAuthCallback({
+        user,
+        activity: activity as ActivityType,
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+      });
       res.cookie(
         'accesstoken',
         accessToken,

@@ -7,6 +7,21 @@ import User from '@/modules/user/user.models';
 import { startSession } from 'mongoose';
 
 const UserRepositories = {
+  findUserById: async (payload: string) => {
+    try {
+      const foundedUser = await User.findById(payload);
+      if (!foundedUser) {
+        throw new Error('Something Went Wrong In Find User By Id Query');
+      }
+      return foundedUser;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In User Find Operation');
+      }
+    }
+  },
   findUserByEmail: async (payload: string) => {
     try {
       const foundedUser = await User.findOne({ email: payload });
@@ -46,10 +61,10 @@ const UserRepositories = {
       }
     }
   },
-  verifyUser: async ({ email }: IUserPayload) => {
+  verifyUser: async ({ userId }: IUserPayload) => {
     try {
-      const verifiedUser = await User.findOneAndUpdate(
-        { email },
+      const verifiedUser = await User.findByIdAndUpdate(
+        userId,
         { $set: { isVerified: true } },
         { new: true }
       );

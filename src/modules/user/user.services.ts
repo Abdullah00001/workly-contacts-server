@@ -1,39 +1,66 @@
 import UserRepositories from '@/modules/user/user.repositories';
 import IUser, {
+  IActivityPayload,
   IProcessFindUserReturn,
   IProcessRecoverAccountPayload,
   IResetPasswordServicePayload,
   IResetPasswordServiceReturnPayload,
   IUserPayload,
+  TLoginSuccessEmailPayload,
+  TProcessLoginPayload,
+  TProcessOAuthCallBackPayload,
+  TProcessVerifyUserArgs,
+  TSession,
+  TSignupSuccessEmailPayloadData,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
 import {
   accessTokenExpiresIn,
+  AccountActivityMap,
   otpExpireAt,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
 } from '@/const';
 import JwtUtils from '@/utils/jwt.utils';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { IRefreshTokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
 import EmailQueueJobs from '@/queue/jobs/email.jobs';
+import { OtpUtilsSingleton } from '@/singletons';
+import { v4 as uuidv4 } from 'uuid';
+import DateUtils from '@/utils/date.utils';
+import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
+import { ActivityType } from '@/modules/user/user.enums';
+import { TRequestUser } from '@/types/express';
 
 const { hashPassword } = PasswordUtils;
 const {
   addSendAccountVerificationOtpEmailToQueue,
   addSendPasswordResetNotificationEmailToQueue,
   addSendAccountRecoverOtpEmailToQueue,
+  addSendSignupSuccessNotificationEmailToQueue,
+  addLoginSuccessNotificationEmailToQueue,
 } = EmailQueueJobs;
-
-const { createNewUser, verifyUser, findUserByEmail, resetPassword } =
-  UserRepositories;
+const { signupSuccessActivitySavedInDb, loginSuccessActivitySavedInDb } =
+  ActivityQueueJobs;
+const {
+  createNewUser,
+  verifyUser,
+  findUserByEmail,
+  resetPassword,
+  findUserById,
+} = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
-
-const { generateAccessToken, generateRefreshToken, generateRecoverToken } =
-  JwtUtils;
+const { calculateFutureDate, formatDateTime } = DateUtils;
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  generateRecoverToken,
+  generateActivationToken,
+} = JwtUtils;
+const otpUtils = OtpUtilsSingleton();
 
 const UserServices = {
   processSignup: async (payload: IUserPayload) => {
@@ -45,10 +72,14 @@ const UserServices = {
         specialChars: false,
         upperCaseAlphabets: false,
       });
+      const activationToken = generateActivationToken({
+        sub: createdUser?._id as string,
+      });
+      const hashOtp = otpUtils.hashOtp({ otp });
       await Promise.all([
         redisClient.set(
           `user:otp:${createdUser?._id}`,
-          otp,
+          hashOtp,
           'PX',
           calculateMilliseconds(otpExpireAt, 'minute')
         ),
@@ -59,7 +90,7 @@ const UserServices = {
           otp,
         }),
       ]);
-      return createdUser;
+      return { createdUser, activationToken };
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -95,24 +126,69 @@ const UserServices = {
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   },
   processVerifyUser: async ({
-    email,
     userId,
-  }: IUserPayload): Promise<IUserPayload> => {
+    browser,
+    deviceType,
+    location,
+    os,
+    ipAddress,
+  }: TProcessVerifyUserArgs): Promise<IUserPayload> => {
     try {
-      const user = await verifyUser({ email });
-      await redisClient.del(`user:recover:otp:${userId}`);
+      const user = await verifyUser({
+        userId: new mongoose.Types.ObjectId(userId),
+      });
+      const sid = uuidv4();
       const accessToken = generateAccessToken({
-        email: user?.email as string,
-        isVerified: user?.isVerified as boolean,
-        userId: user?._id as Types.ObjectId,
-        name: user?.name as string,
+        sid,
+        sub: user?._id as string,
       });
       const refreshToken = generateRefreshToken({
-        email: user?.email as string,
-        isVerified: user?.isVerified as boolean,
-        userId: user?._id as Types.ObjectId,
-        name: user?.name as string,
+        sid,
+        sub: user?._id as string,
       });
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: user?._id as string,
+        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        lastUsedAt: new Date().toISOString(),
+      };
+      const emailPayload: TSignupSuccessEmailPayloadData = {
+        name: user?.name as string,
+        email: user?.email as string,
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.SIGNUP_SUCCESS,
+        title: AccountActivityMap.SIGNUP_SUCCESS.title,
+        description: AccountActivityMap.SIGNUP_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: user?._id as Types.ObjectId,
+      };
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `user:${user?._id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.sadd(`user:${user?._id}:sessions`, sid);
+      redisPipeLine.del(`user:otp:${userId}`);
+      redisPipeLine.del(`otp:limit:${userId}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${userId}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${userId}:count`);
+      await Promise.all([
+        redisPipeLine.exec(),
+        signupSuccessActivitySavedInDb(activityPayload),
+        addSendSignupSuccessNotificationEmailToQueue(emailPayload),
+      ]);
       return { accessToken: accessToken!, refreshToken: refreshToken! };
     } catch (error) {
       if (error instanceof Error) {
@@ -122,18 +198,20 @@ const UserServices = {
       }
     }
   },
-  processResend: async ({ email, name, _id }: IUser) => {
+  processResend: async (sub: string) => {
     try {
+      const { email, name, _id } = await findUserById(sub);
       const otp = generate(6, {
         digits: true,
         lowerCaseAlphabets: false,
         specialChars: false,
         upperCaseAlphabets: false,
       });
+      const hashOtp = otpUtils.hashOtp({ otp });
       await Promise.all([
         redisClient.set(
           `user:otp:${_id}`,
-          otp,
+          hashOtp,
           'PX',
           calculateMilliseconds(otpExpireAt, 'minute')
         ),
@@ -154,25 +232,81 @@ const UserServices = {
       }
     }
   },
-  processLogin: (payload: IUser): IUserPayload => {
-    const { email, isVerified, id, name } = payload;
-    const accessToken = generateAccessToken({
-      email,
-      isVerified,
-      userId: id,
-      name,
-    });
-    const refreshToken = generateRefreshToken({
-      email,
-      isVerified,
-      userId: id,
-      name,
-    });
-
-    return {
-      accessToken: accessToken!,
-      refreshToken: refreshToken!,
-    };
+  processLogin: async ({
+    user,
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+  }: TProcessLoginPayload): Promise<IUserPayload> => {
+    try {
+      const { _id, name, email } = user;
+      const sid = uuidv4();
+      const accessToken = generateAccessToken({
+        sid,
+        sub: _id as string,
+      });
+      const refreshToken = generateRefreshToken({
+        sid,
+        sub: _id as string,
+      });
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: _id as string,
+        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        lastUsedAt: new Date().toISOString(),
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.LOGIN_SUCCESS,
+        title: AccountActivityMap.LOGIN_SUCCESS.title,
+        description: AccountActivityMap.LOGIN_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: _id as Types.ObjectId,
+      };
+      const emailPayload: TLoginSuccessEmailPayload = {
+        browser,
+        device: deviceType,
+        email,
+        ip: ipAddress,
+        location,
+        name,
+        os,
+        time: formatDateTime(new Date().toISOString()),
+      };
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `user:${_id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+      await Promise.all([
+        redisPipeLine.exec(),
+        loginSuccessActivitySavedInDb(activityPayload),
+        addLoginSuccessNotificationEmailToQueue(emailPayload),
+      ]);
+      return {
+        accessToken: accessToken!,
+        refreshToken: refreshToken!,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Process Login Service');
+      }
+    }
   },
   processLogout: async ({
     accessToken,
@@ -394,26 +528,112 @@ const UserServices = {
       }
     }
   },
-  processOAuthCallback: ({
-    email,
-    name,
-    isVerified,
-    _id,
-  }: IUser): IUserPayload => {
+  processOAuthCallback: async ({
+    user,
+    activity,
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+  }: TProcessOAuthCallBackPayload): Promise<IUserPayload> => {
     try {
+      const { _id, name, email } = user;
+      const sid = uuidv4();
       const accessToken = generateAccessToken({
-        email,
-        isVerified,
-        userId: _id as Types.ObjectId,
-        name,
+        sid,
+        sub: _id as string,
       });
       const refreshToken = generateRefreshToken({
-        email,
-        isVerified,
-        userId: _id as Types.ObjectId,
-        name,
+        sid,
+        sub: _id as string,
       });
-
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: _id as string,
+        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        lastUsedAt: new Date().toISOString(),
+      };
+      let activityPayload: IActivityPayload;
+      if ((activity = ActivityType.SIGNUP_SUCCESS)) {
+        activityPayload = {
+          activityType: ActivityType.SIGNUP_SUCCESS,
+          title: AccountActivityMap.SIGNUP_SUCCESS.title,
+          description: AccountActivityMap.SIGNUP_SUCCESS.description,
+          browser,
+          device: deviceType,
+          ipAddress,
+          location,
+          os,
+          user: _id as Types.ObjectId,
+        };
+        const emailPayload: TSignupSuccessEmailPayloadData = {
+          name,
+          email,
+        };
+        const redisPipeLine = redisClient.pipeline();
+        redisPipeLine.set(
+          `user:${_id}:sessions:${sid}`,
+          JSON.stringify(session),
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+        redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+        redisPipeLine.del(`user:otp:${_id}`);
+        redisPipeLine.del(`otp:limit:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}:count`);
+        await Promise.all([
+          redisPipeLine.exec(),
+          signupSuccessActivitySavedInDb(activityPayload),
+          addSendSignupSuccessNotificationEmailToQueue(emailPayload),
+        ]);
+      }
+      if ((activity = ActivityType.LOGIN_SUCCESS)) {
+        activityPayload = {
+          activityType: ActivityType.LOGIN_SUCCESS,
+          title: AccountActivityMap.LOGIN_SUCCESS.title,
+          description: AccountActivityMap.LOGIN_SUCCESS.description,
+          browser,
+          device: deviceType,
+          ipAddress,
+          location,
+          os,
+          user: _id as Types.ObjectId,
+        };
+        const emailPayload: TLoginSuccessEmailPayload = {
+          browser,
+          device: deviceType,
+          email,
+          ip: ipAddress,
+          location,
+          name,
+          os,
+          time: new Date().toISOString(),
+        };
+        const redisPipeLine = redisClient.pipeline();
+        redisPipeLine.set(
+          `user:${_id}:sessions:${sid}`,
+          JSON.stringify(session),
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+        redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+        redisPipeLine.del(`user:otp:${_id}`);
+        redisPipeLine.del(`otp:limit:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}:count`);
+        await Promise.all([
+          redisPipeLine.exec(),
+          loginSuccessActivitySavedInDb(activityPayload),
+          addLoginSuccessNotificationEmailToQueue(emailPayload),
+        ]);
+      }
       return {
         accessToken: accessToken!,
         refreshToken: refreshToken!,

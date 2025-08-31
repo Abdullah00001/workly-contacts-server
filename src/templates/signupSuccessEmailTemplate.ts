@@ -4,7 +4,7 @@ const signupSuccessEmailTemplate = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Amar Contacts</title>
+    <title>Welcome to Workly Contacts</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
@@ -294,16 +294,16 @@ const signupSuccessEmailTemplate = `
     <div class="email-container">
         <!-- Header -->
         <div class="header">
-            <div class="logo">Amar Contacts</div>
+            <div class="logo">Workly Contacts</div>
             <div class="tagline">where every connection counts<span class="heart">💙</span></div>
         </div>
         
         <!-- Main Content -->
         <div class="content">
-            <div class="greeting">Hi {{firstName}},</div>
+            <div class="greeting">Hi {{name}},</div>
             
             <div class="welcome-text">
-                <strong>Welcome to Amar Contacts</strong> — we're beyond excited to have you join our growing community of people who value clean, organized, and meaningful contact management. This isn't just another signup — it's the beginning of a smarter, more personal way to stay connected.
+                <strong>Welcome to Workly Contacts</strong> — we're beyond excited to have you join our growing community of people who value clean, organized, and meaningful contact management. This isn't just another signup — it's the beginning of a smarter, more personal way to stay connected.
             </div>
             
             <!-- Features -->
@@ -363,12 +363,12 @@ const signupSuccessEmailTemplate = `
         <!-- Footer -->
         <div class="footer">
             <div class="footer-message">
-                Once again, <strong>thank you</strong> for trusting Amar Contacts. Let's build something wonderful together.
+                Once again, <strong>thank you</strong> for trusting Workly Contacts. Let's build something wonderful together.
             </div>
             
             <div class="signature">
                 Warmly,<br>
-                The Amar Contacts Team
+                The Workly Contacts Team
             </div>
             
             <div class="company-tagline">

@@ -275,7 +275,7 @@ export const passwordResetNotificationTemplate = `
       </div>
 
       <div class="message">
-        We're writing to confirm that your password was successfully reset for your Amar Contacts account. You have been automatically logged in and can continue using your account.
+        We're writing to confirm that your password was successfully reset for your Workly Contacts account. You have been automatically logged in and can continue using your account.
       </div>
 
       <div class="details-section">
@@ -317,7 +317,7 @@ export const passwordResetNotificationTemplate = `
 
     <div class="footer">
       <p class="footer-text">
-        &copy; Amar Contacts. All rights reserved.
+        &copy; Workly Contacts. All rights reserved.
       </p>
       <div class="help-text">
         Questions about this reset? Contact our support team at <a href="mailto:{{supportEmail}}" style="color: #10b981;">{{supportEmail}}</a>
