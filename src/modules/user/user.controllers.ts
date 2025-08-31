@@ -10,13 +10,14 @@ import {
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
 } from '@/const';
-import { AuthType } from '@/modules/user/user.enums';
+import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { env } from '@/env';
 import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
 import { Types } from 'mongoose';
 import { CreateUserResponseDTO } from '@/modules/user/user.dto';
 import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
+import { TRequestUser } from '@/types/express';
 
 const { cookieOption } = CookieUtils;
 const { getRealIP, getClientMetaData } = ExtractMetaData;
@@ -34,7 +35,7 @@ const {
   // processVerifyOtp,
   // processReSentRecoverAccountOtp,
   // processResetPassword,
-  // processOAuthCallback,
+  processOAuthCallback,
 } = UserServices;
 
 const UserControllers = {
@@ -412,31 +413,41 @@ const UserControllers = {
   //     next(error);
   //   }
   // },
-  // handleProcessOAuthCallback: (
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ) => {
-  //   const user = req.user as IUser;
-  //   try {
-  //     const { accessToken, refreshToken } = processOAuthCallback(user);
-  //     res.cookie(
-  //       'accesstoken',
-  //       accessToken,
-  //       cookieOption(accessTokenExpiresIn)
-  //     );
-  //     res.cookie(
-  //       'refreshtoken',
-  //       refreshToken,
-  //       cookieOption(refreshTokenExpiresIn)
-  //     );
-  //     res.redirect(CLIENT_BASE_URL);
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
+  handleProcessOAuthCallback: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { user, activity } = req.user as TRequestUser;
+    try {
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processOAuthCallback({
+        user,
+        activity: activity as ActivityType,
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+      });
+      res.cookie(
+        'accesstoken',
+        accessToken,
+        cookieOption(accessTokenExpiresIn)
+      );
+      res.cookie(
+        'refreshtoken',
+        refreshToken,
+        cookieOption(refreshTokenExpiresIn)
+      );
+      res.redirect(CLIENT_BASE_URL);
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
 };
 
 export default UserControllers;

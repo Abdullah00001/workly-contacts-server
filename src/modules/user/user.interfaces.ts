@@ -222,4 +222,25 @@ export type TSignupSuccessEmailPayloadData = {
   name: string;
 };
 
+export type TProcessOAuthCallBackPayload = {
+  user: IUser;
+  activity: ActivityType;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+};
+
+export type TLoginSuccessEmailPayload = {
+  email: string;
+  name: string;
+  time: string;
+  ip: string;
+  location: string;
+  device: string;
+  browser: string;
+  os: string;
+};
+
 export default IUser;

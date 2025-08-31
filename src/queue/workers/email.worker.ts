@@ -15,12 +15,14 @@ import { accountRecoveryEmailTemplate } from '@/templates/accountRecoveryEmailTe
 import {
   IPasswordResetNotificationTemplateData,
   IResetPasswordSendEmailPayload,
+  TLoginSuccessEmailPayload,
   TSignupSuccessEmailPayloadData,
 } from '@/modules/user/user.interfaces';
 import { passwordResetNotificationTemplate } from '@/templates/passwordResetNotificationTemplate';
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import failedLoginAttemptEmailTemplate from '@/templates/failedLoginAttemptEmailTemplate';
 import signupSuccessEmailTemplate from '@/templates/signupSuccessEmailTemplate';
+import loginSuccessEmailTemplate from '@/templates/loginSuccessEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 
@@ -109,6 +111,21 @@ const worker = new Worker(
         const personalizedTemplate = template(templateData);
         await mailTransporter.sendMail(
           mailOption(email, 'Welcome To Workly Contacts', personalizedTemplate)
+        );
+        return;
+      }
+      if (name === 'send-login-success-notification-email') {
+        const { email, name, browser, device, ip, location, os, time } =
+          data as TLoginSuccessEmailPayload;
+        const templateData = { name, browser, device, ip, location, os, time };
+        const template = Handlebars.compile(loginSuccessEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'New sign-in detected on your workly account',
+            personalizedTemplate
+          )
         );
         return;
       }
