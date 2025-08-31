@@ -26,7 +26,7 @@ const { CLIENT_BASE_URL } = env;
 const {
   processSignup,
   processVerifyUser,
-  // processLogin,
+  processLogin,
   // processTokens,
   // processLogout,
   processResend,
@@ -128,33 +128,43 @@ const UserControllers = {
       next(error);
     }
   },
-  // handleLogin: (req: Request, res: Response, next: NextFunction) => {
-  //   try {
-  //     const { accessToken, refreshToken } = processLogin(req.user as IUser);
-  //     res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
-  //     res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
-  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-  //     res.cookie(
-  //       'accesstoken',
-  //       accessToken,
-  //       cookieOption(accessTokenExpiresIn)
-  //     );
-  //     res.cookie(
-  //       'refreshtoken',
-  //       refreshToken,
-  //       cookieOption(refreshTokenExpiresIn)
-  //     );
-  //     res.status(200).json({
-  //       status: 'success',
-  //       message: 'Login successful',
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
+  handleLogin: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { user } = req.user as TRequestUser;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processLogin({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        user,
+      });
+      res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+      res.cookie(
+        'accesstoken',
+        accessToken,
+        cookieOption(accessTokenExpiresIn)
+      );
+      res.cookie(
+        'refreshtoken',
+        refreshToken,
+        cookieOption(refreshTokenExpiresIn)
+      );
+      res.status(200).json({
+        status: 'success',
+        message: 'Login successful',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
   // handleLogout: async (req: Request, res: Response, next: NextFunction) => {
   //   try {
   //     const { userId } = req.decoded;

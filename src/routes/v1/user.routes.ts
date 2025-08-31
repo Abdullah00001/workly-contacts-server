@@ -25,7 +25,7 @@ const {
 const {
   handleSignUp,
   handleVerifyUser,
-  // handleLogin,
+  handleLogin,
   // handleCheck,
   // handleRefreshTokens,
   // handleLogout,
@@ -54,9 +54,9 @@ router
     resendOtpEmailCoolDown,
     handleResend
   );
-// router
-//   .route('/auth/login')
-//   .post(isUserExistAndVerified, checkPassword, handleLogin);
+router
+  .route('/auth/login')
+  .post(isUserExistAndVerified, checkPassword, handleLogin);
 // router.route('/auth/check').post(checkAccessToken, handleCheck);
 // // router.route('/auth/refresh').post(checkRefreshToken, handleRefreshTokens);
 // router.route('/auth/logout').post(checkRefreshToken, handleLogout);

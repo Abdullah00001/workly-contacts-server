@@ -7,6 +7,7 @@ import IUser, {
   IResetPasswordServiceReturnPayload,
   IUserPayload,
   TLoginSuccessEmailPayload,
+  TProcessLoginPayload,
   TProcessOAuthCallBackPayload,
   TProcessVerifyUserArgs,
   TSession,
@@ -52,7 +53,7 @@ const {
   findUserById,
 } = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
-const { calculateFutureDate } = DateUtils;
+const { calculateFutureDate, formatDateTime } = DateUtils;
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -231,14 +232,81 @@ const UserServices = {
       }
     }
   },
-  processLogin: async(payload: IUser): Promise<IUserPayload> => {
-    const { email, isVerified, id, name } = payload;
-    
-
-    return {
-      accessToken: accessToken!,
-      refreshToken: refreshToken!,
-    };
+  processLogin: async ({
+    user,
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+  }: TProcessLoginPayload): Promise<IUserPayload> => {
+    try {
+      const { _id, name, email } = user;
+      const sid = uuidv4();
+      const accessToken = generateAccessToken({
+        sid,
+        sub: _id as string,
+      });
+      const refreshToken = generateRefreshToken({
+        sid,
+        sub: _id as string,
+      });
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: _id as string,
+        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        lastUsedAt: new Date().toISOString(),
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.LOGIN_SUCCESS,
+        title: AccountActivityMap.LOGIN_SUCCESS.title,
+        description: AccountActivityMap.LOGIN_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: _id as Types.ObjectId,
+      };
+      const emailPayload: TLoginSuccessEmailPayload = {
+        browser,
+        device: deviceType,
+        email,
+        ip: ipAddress,
+        location,
+        name,
+        os,
+        time: formatDateTime(new Date().toISOString()),
+      };
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `user:${_id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+      await Promise.all([
+        redisPipeLine.exec(),
+        loginSuccessActivitySavedInDb(activityPayload),
+        addLoginSuccessNotificationEmailToQueue(emailPayload),
+      ]);
+      return {
+        accessToken: accessToken!,
+        refreshToken: refreshToken!,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Process Login Service');
+      }
+    }
   },
   // processLogout: async ({
   //   accessToken,

@@ -232,6 +232,15 @@ export type TProcessOAuthCallBackPayload = {
   ipAddress: string;
 };
 
+export type TProcessLoginPayload = {
+  user: IUser;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+};
+
 export type TLoginSuccessEmailPayload = {
   email: string;
   name: string;

@@ -77,7 +77,7 @@ const UserMiddlewares = {
         res.status(400).json({ success: false, message: 'User Not Verified' });
         return;
       }
-      req.user = isUserExist;
+      req.user = { user: isUserExist };
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -99,7 +99,7 @@ const UserMiddlewares = {
         res.status(404).json({ success: false, message: 'User Not Found' });
         return;
       }
-      req.user = isUserExist;
+      req.user = {user:isUserExist};
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -113,7 +113,7 @@ const UserMiddlewares = {
   },
   isUserVerified: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { isVerified } = req.user as IUser;
+      const { isVerified } = req.user?.user as IUser;
       if (!isVerified) {
         res
           .status(403)
@@ -185,7 +185,7 @@ const UserMiddlewares = {
   },
   checkPassword: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, email, password, _id } = req.user as IUser;
+      const { name, email, password, _id } = req.user?.user as IUser;
       if (!(await comparePassword(req?.body?.password, password.secret))) {
         const { browser, device, location, os, ip } =
           await getClientMetaData(req);
