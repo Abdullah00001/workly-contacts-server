@@ -9,7 +9,7 @@ import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
 
 const ExtractMetaData = {
-  getRealIP: (req: Request) => {
+  getRealIP: (req: Request): string => {
     const forwarded = req.headers['x-forwarded-for'];
     const realIp = req.headers['x-real-ip'];
     const socketIp = req.socket.remoteAddress;

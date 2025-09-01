@@ -9,7 +9,7 @@ const worker = new Worker(
   async (job: Job) => {
     const { name, data, id } = job;
     try {
-      if (name === 'save-activity-to-db') {
+      if (name === 'save-login-failed-activity-to-db') {
         const newActivity = new Activity(data as IActivityPayload);
         await newActivity.save();
         return;
@@ -20,6 +20,11 @@ const worker = new Worker(
         return;
       }
       if (name === 'save-login-activity-to-db') {
+        const newActivity = new Activity(data as IActivityPayload);
+        await newActivity.save();
+        return;
+      }
+      if (name === 'save-account-lock-activity-to-db') {
         const newActivity = new Activity(data as IActivityPayload);
         await newActivity.save();
         return;

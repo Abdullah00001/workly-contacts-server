@@ -28,6 +28,11 @@ interface IUser extends Document {
   googleId: string;
 }
 
+export type TUpdateUserAccountStatus = {
+  accountStatus: AccountStatus;
+  userId: Types.ObjectId;
+};
+
 export interface IActivity extends Document {
   activityType: ActivityType;
   title: string;
@@ -250,6 +255,13 @@ export type TLoginSuccessEmailPayload = {
   device: string;
   browser: string;
   os: string;
+};
+
+export type TAccountLockedEmailPayload = {
+  name: string;
+  time: string;
+  activeLink: string;
+  email:string
 };
 
 export default IUser;

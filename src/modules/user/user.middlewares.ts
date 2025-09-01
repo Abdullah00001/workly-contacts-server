@@ -2,7 +2,10 @@ import logger from '@/configs/logger.configs';
 import redisClient from '@/configs/redis.configs';
 import UserRepositories from '@/modules/user/user.repositories';
 import { NextFunction, Request, Response } from 'express';
-import IUser, { IActivityPayload } from '@/modules/user/user.interfaces';
+import IUser, {
+  IActivityPayload,
+  TAccountLockedEmailPayload,
+} from '@/modules/user/user.interfaces';
 import PasswordUtils from '@/utils/password.utils';
 import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import JwtUtils from '@/utils/jwt.utils';
@@ -10,10 +13,11 @@ import EmailQueueJobs from '@/queue/jobs/email.jobs';
 import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
 import ExtractMetaData from '@/utils/metaData.utils';
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
-import { ActivityType } from '@/modules/user/user.enums';
+import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
 import { Types } from 'mongoose';
 import {
   AccountActivityMap,
+  baseUrl,
   otpRateLimitMaxCount,
   otpRateLimitSlidingWindow,
   resendOtpEmailCoolDownWindow,
@@ -21,19 +25,27 @@ import {
 import DateUtils from '@/utils/date.utils';
 import { OtpUtilsSingleton } from '@/singletons';
 import CalculationUtils from '@/utils/calculation.utils';
+import CookieUtils from '@/utils/cookie.utils';
+import axios from 'axios';
+import { env } from '@/env';
+import { v4 as uuidv4 } from 'uuid';
 
 const { comparePassword } = PasswordUtils;
-const { findUserByEmail } = UserRepositories;
+const { findUserByEmail, updateUserAccountStatus } = UserRepositories;
 const {
   verifyAccessToken,
   verifyRefreshToken,
   verifyRecoverToken,
   verifyActivationToken,
 } = JwtUtils;
-
-const { loginFailedNotificationEmailToQueue } = EmailQueueJobs;
-const { loginFailedActivitySavedInDb } = ActivityQueueJobs;
-const { getClientMetaData } = ExtractMetaData;
+const { sharedCookieOption } = CookieUtils;
+const {
+  loginFailedNotificationEmailToQueue,
+  addAccountLockNotificationToQueue,
+} = EmailQueueJobs;
+const { loginFailedActivitySavedInDb, accountLockActivitySavedInDb } =
+  ActivityQueueJobs;
+const { getClientMetaData, getRealIP } = ExtractMetaData;
 const { formatDateTime } = DateUtils;
 const otpUtils = OtpUtilsSingleton();
 const { expiresInTimeUnitToMs } = CalculationUtils;
@@ -70,7 +82,10 @@ const UserMiddlewares = {
       const { email } = req.body;
       const isUserExist = await findUserByEmail(email);
       if (!isUserExist) {
-        res.status(404).json({ success: false, message: 'User Not Found' });
+        res.status(404).json({
+          success: false,
+          message: 'Invalid Credential,Check Your Email And Password',
+        });
         return;
       }
       if (!isUserExist.isVerified) {
@@ -99,7 +114,7 @@ const UserMiddlewares = {
         res.status(404).json({ success: false, message: 'User Not Found' });
         return;
       }
-      req.user = {user:isUserExist};
+      req.user = { user: isUserExist };
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -186,37 +201,106 @@ const UserMiddlewares = {
   checkPassword: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, email, password, _id } = req.user?.user as IUser;
+      const key = `user:login:attempts:${email}`;
       if (!(await comparePassword(req?.body?.password, password.secret))) {
-        const { browser, device, location, os, ip } =
-          await getClientMetaData(req);
-        const emailPayload: ILoginEmailPayload = {
-          name,
-          email,
-          browser: browser.name as string,
-          device: device.type || 'desktop',
-          ip,
-          os: os.name as string,
-          location: `${location.city} ${location.country}`,
-          time: formatDateTime(new Date().toISOString()),
-        };
-        const activityPayload: IActivityPayload = {
-          browser: browser.name as string,
-          device: device.type || 'desktop',
-          os: os.name as string,
-          location: `${location.city} ${location.country}`,
-          ipAddress: ip,
-          activityType: ActivityType.LOGIN_FAILED,
-          user: _id as Types.ObjectId,
-          title: AccountActivityMap.LOGIN_FAILED.title,
-          description: AccountActivityMap.LOGIN_FAILED.description,
-        };
-        await Promise.all([
-          loginFailedNotificationEmailToQueue(emailPayload),
-          loginFailedActivitySavedInDb(activityPayload),
-        ]);
-        res.status(400).json({ success: false, message: 'Invalid Password' });
+        await redisClient.set(key, 0, 'PX', expiresInTimeUnitToMs('24h'), 'NX');
+        const attemptCount = await redisClient.incr(key);
+        if (attemptCount === 3) {
+          const { browser, device, location, os, ip } =
+            await getClientMetaData(req);
+          const emailPayload: ILoginEmailPayload = {
+            name,
+            email,
+            browser: browser.name as string,
+            device: device.type || 'desktop',
+            ip,
+            os: os.name as string,
+            location: `${location.city} ${location.country}`,
+            time: formatDateTime(new Date().toISOString()),
+          };
+          const activityPayload: IActivityPayload = {
+            browser: browser.name as string,
+            device: device.type || 'desktop',
+            os: os.name as string,
+            location: `${location.city} ${location.country}`,
+            ipAddress: ip,
+            activityType: ActivityType.LOGIN_FAILED,
+            user: _id as Types.ObjectId,
+            title: AccountActivityMap.LOGIN_FAILED.title,
+            description: AccountActivityMap.LOGIN_FAILED.description,
+          };
+          await Promise.all([
+            updateUserAccountStatus({
+              userId: _id as Types.ObjectId,
+              accountStatus: AccountStatus.ON_RISK,
+            }),
+            loginFailedNotificationEmailToQueue(emailPayload),
+            loginFailedActivitySavedInDb(activityPayload),
+          ]);
+          res.cookie('__cptchaRequired', true, sharedCookieOption());
+        }
+        if (attemptCount === 9) {
+          const { browser, device, location, os, ip } =
+            await getClientMetaData(req);
+          const activityPayload: IActivityPayload = {
+            activityType: ActivityType.ACCOUNT_LOCKED,
+            title: AccountActivityMap.ACCOUNT_LOCKED.title,
+            description: AccountActivityMap.ACCOUNT_LOCKED.description,
+            browser: browser.name as string,
+            device: device.type || 'desktop',
+            ipAddress: ip,
+            location: `${location.city} ${location.country}`,
+            os: os.name as string,
+            user: _id as Types.ObjectId,
+          };
+          const uuid = uuidv4();
+          const emailData: TAccountLockedEmailPayload = {
+            name,
+            email,
+            time: formatDateTime(new Date().toISOString()),
+            activeLink: `${env.SERVER_BASE_URL}${baseUrl.v1}/${uuid}`,
+          };
+          const pipeline = redisClient.pipeline();
+          await updateUserAccountStatus({
+            userId: _id as Types.ObjectId,
+            accountStatus: AccountStatus.LOCKED,
+          });
+          pipeline.set(
+            `blacklist:ip:${ip}`,
+            ip,
+            'PX',
+            expiresInTimeUnitToMs('1d')
+          );
+          const sessions = await redisClient.smembers(`user:${_id}:sessions`);
+          pipeline.del(`user:${_id}:sessions`);
+          sessions.forEach((sid) => {
+            pipeline.del(`user:${_id}:sessions:${sid}`);
+          });
+          pipeline.set(
+            `user:activation:uuid:${uuid}`,
+            _id as string,
+            'PX',
+            expiresInTimeUnitToMs('1d')
+          );
+          await Promise.all([
+            pipeline.exec(),
+            addAccountLockNotificationToQueue(emailData),
+            accountLockActivitySavedInDb(activityPayload),
+          ]);
+          res.status(401).json({
+            success: false,
+            message:
+              'Your account has been locked,Check your email we sent yor email for more information,Or contact our support',
+          });
+          return;
+        }
+        res.status(401).json({
+          success: false,
+          message: 'Invalid Credential,Check Your Email And Password',
+        });
         return;
       }
+      await redisClient.del(key);
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -559,6 +643,72 @@ const UserMiddlewares = {
       } else {
         logger.error('Unknown Error Occurred In Otp Rate Limiter Middleware');
         next(new Error('Unknown Error In resendOtpEmailCoolDown middleware'));
+      }
+    }
+  },
+  checkIpBlackList: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ip = getRealIP(req);
+      const isBlacklisted = await redisClient.get(`blacklist:ip:${ip}`);
+      if (isBlacklisted) {
+        res.status(400).json({
+          success: false,
+          message:
+            'Access denied: Your IP address has been temporarily blocked due to suspicious activity. Please try again later or contact support if you believe this is a mistake.',
+        });
+        return;
+      }
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error('Unknown Error Occurred In Check IP Blacklist Middleware');
+        next(new Error('Unknown Error In Check IP Blacklist middleware'));
+      }
+    }
+  },
+  checkLoginAttempts: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { email, captchaToken } = req.body;
+    try {
+      const attempts = Number(
+        await redisClient.get(`user:login:attempts:${email}`)
+      );
+      if (attempts >= 4 && !captchaToken) {
+        res.status(402).json({
+          success: false,
+          message: 'Captcha verification failed, Captcha token required',
+        });
+        return;
+      }
+      if (attempts >= 4 && captchaToken) {
+        const captchaRes = await axios.post(
+          `https://www.google.com/recaptcha/api/siteverify?secret=${env.RECAPTCHA_SECRET_KEY}&response=${captchaToken}`
+        );
+        const data = captchaRes.data;
+        if (!data.success) {
+          res.status(402).json({
+            success: false,
+            message: 'Captcha verification failed',
+          });
+          return;
+        }
+      }
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error(
+          'Unknown Error Occurred In Check Login Attempts Middleware'
+        );
+        next(new Error('Unknown Error In Check Login Attempts middleware'));
       }
     }
   },

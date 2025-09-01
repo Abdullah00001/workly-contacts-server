@@ -15,6 +15,7 @@ import { accountRecoveryEmailTemplate } from '@/templates/accountRecoveryEmailTe
 import {
   IPasswordResetNotificationTemplateData,
   IResetPasswordSendEmailPayload,
+  TAccountLockedEmailPayload,
   TLoginSuccessEmailPayload,
   TSignupSuccessEmailPayloadData,
 } from '@/modules/user/user.interfaces';
@@ -23,6 +24,7 @@ import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import failedLoginAttemptEmailTemplate from '@/templates/failedLoginAttemptEmailTemplate';
 import signupSuccessEmailTemplate from '@/templates/signupSuccessEmailTemplate';
 import loginSuccessEmailTemplate from '@/templates/loginSuccessEmailTemplate';
+import { accountLockedEmailTemplate } from '@/templates/accountLockedEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 
@@ -124,6 +126,21 @@ const worker = new Worker(
           mailOption(
             email,
             'New sign-in detected on your workly account',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
+      if (name === 'send-account-lock-notification-email') {
+        const { activeLink, name, time, email } =
+          data as TAccountLockedEmailPayload;
+        const templateData = { activeLink, name, time };
+        const template = Handlebars.compile(accountLockedEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'Action Required: Your workly-contact account has been locked',
             personalizedTemplate
           )
         );

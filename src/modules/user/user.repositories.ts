@@ -2,6 +2,7 @@ import Profile from '@/modules/profile/profile.models';
 import {
   IResetPasswordRepositoryPayload,
   IUserPayload,
+  TUpdateUserAccountStatus,
 } from '@/modules/user/user.interfaces';
 import User from '@/modules/user/user.models';
 import { startSession } from 'mongoose';
@@ -74,6 +75,27 @@ const UserRepositories = {
         throw error;
       } else {
         throw new Error('Unknown Error Occurred In User Verify Operation');
+      }
+    }
+  },
+  updateUserAccountStatus: async ({
+    userId,
+    accountStatus,
+  }: TUpdateUserAccountStatus) => {
+    try {
+      const verifiedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: { accountStatus } },
+        { new: true }
+      );
+      return verifiedUser;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Update User Account Status Operation'
+        );
       }
     }
   },

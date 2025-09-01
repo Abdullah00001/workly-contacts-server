@@ -10,78 +10,99 @@ const {
   checkOtp,
   isUserExistAndVerified,
   checkPassword,
-  isUserExist,
-  isUserVerified,
-  checkAccessToken,
-  checkRefreshToken,
-  checkRecoverOtp,
-  checkR_stp1Token,
-  checkR_stp2Token,
-  checkR_stp3Token,
+  // isUserExist,
+  // isUserVerified,
+  // checkAccessToken,
+  // checkRefreshToken,
+  // checkRecoverOtp,
+  // checkR_stp1Token,
+  // checkR_stp2Token,
+  // checkR_stp3Token,
   otpRateLimiter,
   resendOtpEmailCoolDown,
   checkActivationToken,
+  checkIpBlackList,
+  checkLoginAttempts,
 } = UserMiddlewares;
 const {
   handleSignUp,
   handleVerifyUser,
   handleLogin,
-  handleCheck,
-  handleRefreshTokens,
-  handleLogout,
+  // handleCheck,
+  // handleRefreshTokens,ssss
+  // handleLogout,
   handleResend,
-  handleFindUser,
-  handleSentRecoverOtp,
-  handleVerifyRecoverOtp,
-  handleResendRecoverOtp,
-  handleResetPassword,
-  handleCheckR_Stp1,
-  handleCheckR_Stp2,
-  handleCheckR_Stp3,
+  // handleFindUser,
+  // handleSentRecoverOtp,
+  // handleVerifyRecoverOtp,
+  // handleResendRecoverOtp,
+  // handleResetPassword,
+  // handleCheckR_Stp1,
+  // handleCheckR_Stp2,
+  // handleCheckR_Stp3,
   handleProcessOAuthCallback,
 } = UserControllers;
 
 const router = Router();
 
-router.route('/auth/signup').post(isSignupUserExist, handleSignUp);
+router
+  .route('/auth/signup')
+  .post(checkIpBlackList, isSignupUserExist, handleSignUp);
 router
   .route('/auth/verify')
-  .post(checkActivationToken, otpRateLimiter, checkOtp, handleVerifyUser);
+  .post(
+    checkIpBlackList,
+    checkActivationToken,
+    otpRateLimiter,
+    checkOtp,
+    handleVerifyUser
+  );
 router
   .route('/auth/resend')
-  .post(checkActivationToken, resendOtpEmailCoolDown, handleResend);
+  .post(
+    checkIpBlackList,
+    checkActivationToken,
+    resendOtpEmailCoolDown,
+    handleResend
+  );
 router
   .route('/auth/login')
-  .post(isUserExistAndVerified, checkPassword, handleLogin);
-router.route('/auth/check').post(checkAccessToken, handleCheck);
+  .post(
+    checkIpBlackList,
+    checkLoginAttempts,
+    isUserExistAndVerified,
+    checkPassword,
+    handleLogin
+  );
+// router.route('/auth/check').post(checkAccessToken, handleCheck);
 // router.route('/auth/refresh').post(checkRefreshToken, handleRefreshTokens);
-router.route('/auth/logout').post(checkRefreshToken, handleLogout);
-router
-  .route('/auth/recover/check/stp1')
-  .post(checkR_stp1Token, handleCheckR_Stp1);
-router
-  .route('/auth/recover/check/stp2')
-  .post(checkR_stp2Token, handleCheckR_Stp2);
-router
-  .route('/auth/recover/check/stp3')
-  .post(checkR_stp3Token, handleCheckR_Stp3);
-router
-  .route('/auth/recover/find')
-  .post(isUserExist, isUserVerified, handleFindUser);
-router
-  .route('/auth/recover/sent-otp')
-  .post(checkR_stp1Token, handleSentRecoverOtp);
-router
-  .route('/auth/recover/verify')
-  .post(checkR_stp2Token, checkRecoverOtp, handleVerifyRecoverOtp);
+// router.route('/auth/logout').post(checkRefreshToken, handleLogout);
+// router
+//   .route('/auth/recover/check/stp1')
+//   .post(checkR_stp1Token, handleCheckR_Stp1);
+// router
+//   .route('/auth/recover/check/stp2')
+//   .post(checkR_stp2Token, handleCheckR_Stp2);
+// router
+//   .route('/auth/recover/check/stp3')
+//   .post(checkR_stp3Token, handleCheckR_Stp3);
+// router
+//   .route('/auth/recover/find')
+//   .post(isUserExist, isUserVerified, handleFindUser);
+// router
+//   .route('/auth/recover/sent-otp')
+//   .post(checkR_stp1Token, handleSentRecoverOtp);
+// router
+//   .route('/auth/recover/verify')
+//   .post(checkR_stp2Token, checkRecoverOtp, handleVerifyRecoverOtp);
 
-router
-  .route('/auth/recover/resent')
-  .post(checkR_stp2Token, handleResendRecoverOtp);
+// router
+//   .route('/auth/recover/resent')
+//   .post(checkR_stp2Token, handleResendRecoverOtp);
 
-router
-  .route('/auth/recover/reset')
-  .patch(checkR_stp3Token, handleResetPassword);
+// router
+//   .route('/auth/recover/reset')
+//   .patch(checkR_stp3Token, handleResetPassword);
 
 router
   .route('/auth/google')

@@ -25,4 +25,6 @@ export const env: IEnvConfig = {
   JWT_ACTIVATION_TOKEN_SECRET_KEY: getEnvVariable(
     'JWT_ACTIVATION_TOKEN_SECRET_KEY'
   ),
+  RECAPTCHA_SECRET_KEY: getEnvVariable('RECAPTCHA_SECRET_KEY'),
+  SERVER_BASE_URL: getEnvVariable('SERVER_BASE_URL'),
 };

@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
+import path from 'path';
 
-config();
+config({ path: path.resolve(__dirname, '../../.env.local') });
 
 const load = process.env;
 

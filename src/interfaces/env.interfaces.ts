@@ -18,4 +18,6 @@ export default interface IEnvConfig {
   CLIENT_BASE_URL: string;
   OTP_HASH_SECRET: string;
   JWT_ACTIVATION_TOKEN_SECRET_KEY: string;
+  RECAPTCHA_SECRET_KEY: string;
+  SERVER_BASE_URL:string
 }
