@@ -14,6 +14,7 @@ import IUser, {
   TProcessVerifyUserArgs,
   TSession,
   TSignupSuccessEmailPayloadData,
+  TProcessRefreshToken,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
@@ -215,31 +216,13 @@ const UserServices = {
       }
     }
   },
-  processTokens: async (
-    payload: IRefreshTokenPayload
-  ): Promise<IUserPayload> => {
-    const { email, refreshToken } = payload;
-    const user = await findUserByEmail(email);
-    const newAccessToken = generateAccessToken({
-      email: user?.email as string,
-      isVerified: user?.isVerified as boolean,
-      userId: user?._id as Types.ObjectId,
-      name: user?.name as string,
-    }) as string;
-
-    const newRefreshToken = generateRefreshToken({
-      email: user?.email as string,
-      isVerified: user?.isVerified as boolean,
-      userId: user?._id as Types.ObjectId,
-      name: user?.name as string,
-    }) as string;
-    await redisClient.set(
-      `blacklist:refreshToken:${user?._id}`,
-      refreshToken,
-      'PX',
-      expiresInTimeUnitToMs(refreshTokenExpiresIn)
-    );
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  processRefreshToken: (payload: TProcessRefreshToken) => {
+    const { sid, userId } = payload;
+    const accessToken = generateAccessToken({
+      sid,
+      sub: userId as string,
+    });
+    return { accessToken };
   },
   processLogin: async ({
     user,

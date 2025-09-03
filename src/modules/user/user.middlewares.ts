@@ -419,12 +419,23 @@ const UserMiddlewares = {
   checkSession: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { sid, sub } = req.decoded;
+      const isBlacklisted = await redisClient.exists(
+        `blacklist:sessions:${sid}`
+      );
+      if (isBlacklisted) {
+        res
+          .status(401)
+          .json({
+            success: false,
+            message: 'Session has expired,Login Required!',
+          });
+      }
       const isExists = await redisClient.exists(`user:${sub}:sessions:${sid}`);
       if (!isExists) {
         await redisClient.srem(`user:${sub}:sessions`, sid as string);
         res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
         res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
-        res.status(403).json({
+        res.status(401).json({
           success: false,
           message: 'Session has been expired,Login Required!',
         });

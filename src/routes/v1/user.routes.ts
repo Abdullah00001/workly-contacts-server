@@ -25,6 +25,7 @@ const {
   checkLoginAttempts,
   checkActiveToken,
   checkChangePasswordPageToken,
+  checkSession,
 } = UserMiddlewares;
 const {
   handleSignUp,
@@ -88,9 +89,11 @@ router
 router
   .route('/auth/active/change/:uuid')
   .post(checkChangePasswordPageToken, handleChangePasswordAndAccountActivation);
-router.route('/auth/check').post(checkAccessToken, handleCheck);
-router.route('/auth/refresh').post(checkRefreshToken, handleRefreshTokens);
-// router.route('/auth/logout').post(checkRefreshToken, handleLogout);
+router.route('/auth/check').post(checkAccessToken, checkSession, handleCheck);
+router
+  .route('/auth/refresh')
+  .post(checkRefreshToken, checkSession, handleRefreshTokens);
+// router.route('/auth/logout').post(checkRefreshToken,checkSession, handleLogout);
 // router
 //   .route('/auth/recover/check/stp1')
 //   .post(checkR_stp1Token, handleCheckR_Stp1);

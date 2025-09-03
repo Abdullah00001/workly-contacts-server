@@ -28,7 +28,7 @@ const {
   processSignup,
   processVerifyUser,
   processLogin,
-  // processTokens,
+  processRefreshToken,
   processLogout,
   processResend,
   // processFindUser,
@@ -190,31 +190,17 @@ const UserControllers = {
       next(error);
     }
   },
-  handleRefreshTokens: async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  handleRefreshTokens: (req: Request, res: Response, next: NextFunction) => {
     try {
-      const currentRefreshToken = req.cookies?.refreshtoken;
-      const { email, isVerified, name, userId } = req.decoded;
-      const { accessToken, refreshToken } = await processTokens({
+      const { sid, userId } = req.decoded;
+      const { accessToken } = processRefreshToken({
         userId,
-        email,
-        isVerified,
-        name,
-        refreshToken: currentRefreshToken,
+        sid: sid as string,
       });
-      res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
       res.cookie(
         'accesstoken',
         accessToken,
         cookieOption(accessTokenExpiresIn)
-      );
-      res.cookie(
-        'refreshtoken',
-        refreshToken,
-        cookieOption(refreshTokenExpiresIn)
       );
       res.status(200).json({
         status: 'success',

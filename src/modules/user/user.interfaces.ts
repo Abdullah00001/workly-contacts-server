@@ -294,4 +294,9 @@ export type TChangePasswordAndAccountActivation = {
   userId: Types.ObjectId;
 };
 
+export type TProcessRefreshToken = {
+  sid: string;
+  userId: string;
+};
+
 export default IUser;
