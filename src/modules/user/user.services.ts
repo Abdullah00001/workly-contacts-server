@@ -108,32 +108,6 @@ const UserServices = {
       }
     }
   },
-  // processTokens: async (
-  //   payload: IRefreshTokenPayload
-  // ): Promise<IUserPayload> => {
-  //   const { email, refreshToken } = payload;
-  //   const user = await findUserByEmail(email);
-  //   const newAccessToken = generateAccessToken({
-  //     email: user?.email as string,
-  //     isVerified: user?.isVerified as boolean,
-  //     userId: user?._id as Types.ObjectId,
-  //     name: user?.name as string,
-  //   }) as string;
-
-  //   const newRefreshToken = generateRefreshToken({
-  //     email: user?.email as string,
-  //     isVerified: user?.isVerified as boolean,
-  //     userId: user?._id as Types.ObjectId,
-  //     name: user?.name as string,
-  //   }) as string;
-  //   await redisClient.set(
-  //     `blacklist:refreshToken:${user?._id}`,
-  //     refreshToken,
-  //     'PX',
-  //     expiresInTimeUnitToMs(refreshTokenExpiresIn)
-  //   );
-  //   return { accessToken: newAccessToken, refreshToken: newRefreshToken };
-  // },
   processVerifyUser: async ({
     userId,
     browser,
@@ -241,6 +215,32 @@ const UserServices = {
       }
     }
   },
+  processTokens: async (
+    payload: IRefreshTokenPayload
+  ): Promise<IUserPayload> => {
+    const { email, refreshToken } = payload;
+    const user = await findUserByEmail(email);
+    const newAccessToken = generateAccessToken({
+      email: user?.email as string,
+      isVerified: user?.isVerified as boolean,
+      userId: user?._id as Types.ObjectId,
+      name: user?.name as string,
+    }) as string;
+
+    const newRefreshToken = generateRefreshToken({
+      email: user?.email as string,
+      isVerified: user?.isVerified as boolean,
+      userId: user?._id as Types.ObjectId,
+      name: user?.name as string,
+    }) as string;
+    await redisClient.set(
+      `blacklist:refreshToken:${user?._id}`,
+      refreshToken,
+      'PX',
+      expiresInTimeUnitToMs(refreshTokenExpiresIn)
+    );
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  },
   processLogin: async ({
     user,
     browser,
@@ -324,13 +324,13 @@ const UserServices = {
   }: IUserPayload) => {
     try {
       await redisClient.set(
-        `blacklist:refreshToken:${userId}`,
+        `blacklist:jwt:${refreshToken}`,
         refreshToken!,
         'PX',
         expiresInTimeUnitToMs(refreshTokenExpiresIn)
       );
       await redisClient.set(
-        `blacklist:accessToken:${userId}`,
+        `blacklist:jwt:${accessToken}`,
         accessToken!,
         'PX',
         expiresInTimeUnitToMs(accessTokenExpiresIn)

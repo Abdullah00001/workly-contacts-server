@@ -12,8 +12,8 @@ const {
   checkPassword,
   // isUserExist,
   // isUserVerified,
-  // checkAccessToken,
-  // checkRefreshToken,
+  checkAccessToken,
+  checkRefreshToken,
   // checkRecoverOtp,
   // checkR_stp1Token,
   // checkR_stp2Token,
@@ -31,8 +31,8 @@ const {
   handleVerifyUser,
   handleLogin,
   handleAccountActivation,
-  // handleCheck,
-  // handleRefreshTokens,ssss
+  handleCheck,
+  handleRefreshTokens,
   // handleLogout,
   handleResend,
   // handleFindUser,
@@ -88,8 +88,8 @@ router
 router
   .route('/auth/active/change/:uuid')
   .post(checkChangePasswordPageToken, handleChangePasswordAndAccountActivation);
-// router.route('/auth/check').post(checkAccessToken, handleCheck);
-// router.route('/auth/refresh').post(checkRefreshToken, handleRefreshTokens);
+router.route('/auth/check').post(checkAccessToken, handleCheck);
+router.route('/auth/refresh').post(checkRefreshToken, handleRefreshTokens);
 // router.route('/auth/logout').post(checkRefreshToken, handleLogout);
 // router
 //   .route('/auth/recover/check/stp1')

@@ -16,10 +16,12 @@ import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
 import { Types } from 'mongoose';
 import {
+  accessTokenExpiresIn,
   AccountActivityMap,
   baseUrl,
   otpRateLimitMaxCount,
   otpRateLimitSlidingWindow,
+  refreshTokenExpiresIn,
   resendOtpEmailCoolDownWindow,
 } from '@/const';
 import DateUtils from '@/utils/date.utils';
@@ -40,7 +42,7 @@ const {
   verifyActivationToken,
   verifyChangePasswordPageToken,
 } = JwtUtils;
-const { sharedCookieOption } = CookieUtils;
+const { sharedCookieOption, cookieOption } = CookieUtils;
 const {
   loginFailedNotificationEmailToQueue,
   addAccountLockNotificationToQueue,
@@ -384,9 +386,7 @@ const UserMiddlewares = {
         });
         return;
       }
-      const isBlacklisted = await redisClient.get(
-        `blacklist:accessToken:${token}`
-      );
+      const isBlacklisted = await redisClient.get(`blacklist:jwt:${token}`);
       if (isBlacklisted) {
         res.status(403).json({
           success: false,
@@ -412,6 +412,31 @@ const UserMiddlewares = {
         next(error);
       } else {
         logger.error('Unknown Error Occurred In Check Access Token Middleware');
+        next(error);
+      }
+    }
+  },
+  checkSession: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { sid, sub } = req.decoded;
+      const isExists = await redisClient.exists(`user:${sub}:sessions:${sid}`);
+      if (!isExists) {
+        await redisClient.srem(`user:${sub}:sessions`, sid as string);
+        res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
+        res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
+        res.status(403).json({
+          success: false,
+          message: 'Session has been expired,Login Required!',
+        });
+        return;
+      }
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error('Unknown Error Occurred In Check Session Middleware');
         next(error);
       }
     }
