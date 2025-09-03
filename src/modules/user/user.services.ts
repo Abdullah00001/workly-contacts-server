@@ -6,7 +6,9 @@ import IUser, {
   IResetPasswordServicePayload,
   IResetPasswordServiceReturnPayload,
   IUserPayload,
+  TAccountUnlockedEmailPayload,
   TLoginSuccessEmailPayload,
+  TProcessChangePasswordAndAccountActivation,
   TProcessLoginPayload,
   TProcessOAuthCallBackPayload,
   TProcessVerifyUserArgs,
@@ -32,7 +34,7 @@ import { OtpUtilsSingleton } from '@/singletons';
 import { v4 as uuidv4 } from 'uuid';
 import DateUtils from '@/utils/date.utils';
 import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
-import { ActivityType } from '@/modules/user/user.enums';
+import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
 import { TRequestUser } from '@/types/express';
 
 const { hashPassword } = PasswordUtils;
@@ -42,15 +44,21 @@ const {
   addSendAccountRecoverOtpEmailToQueue,
   addSendSignupSuccessNotificationEmailToQueue,
   addLoginSuccessNotificationEmailToQueue,
+  addAccountUnlockNotificationToQueue,
 } = EmailQueueJobs;
-const { signupSuccessActivitySavedInDb, loginSuccessActivitySavedInDb } =
-  ActivityQueueJobs;
+const {
+  signupSuccessActivitySavedInDb,
+  loginSuccessActivitySavedInDb,
+  accountUnlockActivitySavedInDb,
+} = ActivityQueueJobs;
 const {
   createNewUser,
   verifyUser,
   findUserByEmail,
   resetPassword,
   findUserById,
+  updateUserAccountStatus,
+  changePasswordAndAccountActivation,
 } = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
 const { calculateFutureDate, formatDateTime } = DateUtils;
@@ -59,6 +67,7 @@ const {
   generateRefreshToken,
   generateRecoverToken,
   generateActivationToken,
+  generateChangePasswordPageToken,
 } = JwtUtils;
 const otpUtils = OtpUtilsSingleton();
 
@@ -644,6 +653,77 @@ const UserServices = {
       } else {
         throw new Error(
           'Unknown Error Occurred In Process OAuth Callback Service'
+        );
+      }
+    }
+  },
+  processAccountActivation: (userId: string) => {
+    try {
+      const token = generateChangePasswordPageToken({ sub: userId });
+      return token;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Account Activation Service'
+        );
+      }
+    }
+  },
+  processChangePasswordAndAccountActivation: async ({
+    token,
+    userId,
+    uuid,
+    password,
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+  }: TProcessChangePasswordAndAccountActivation) => {
+    try {
+      const id = new mongoose.Types.ObjectId(userId);
+      const hashSecret = await hashPassword(password);
+      const user = await changePasswordAndAccountActivation({
+        userId: id,
+        password: hashSecret as string,
+      });
+      const pipeline = redisClient.pipeline();
+      pipeline.del(`user:activation:uuid:${uuid}`);
+      pipeline.set(
+        `blacklist:jwt:${token}`,
+        token,
+        'PX',
+        expiresInTimeUnitToMs('15m')
+      );
+      const activityPayload = {
+        activityType: ActivityType.ACCOUNT_ACTIVE,
+        title: AccountActivityMap.ACCOUNT_ACTIVE.title,
+        description: AccountActivityMap.ACCOUNT_ACTIVE.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: user?._id as Types.ObjectId,
+      };
+      const emailPayload: TAccountUnlockedEmailPayload = {
+        email: user?.email as string,
+        name: user?.name as string,
+        time: formatDateTime(new Date().toISOString()),
+      };
+      await Promise.all([
+        pipeline.exec(),
+        addAccountUnlockNotificationToQueue(emailPayload),
+        accountUnlockActivitySavedInDb(activityPayload),
+      ]);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Change Password And Account Activation Service'
         );
       }
     }

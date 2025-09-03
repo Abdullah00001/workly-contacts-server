@@ -1,5 +1,9 @@
 import { model, Model, Schema } from 'mongoose';
-import IUser, { IActivity, IPassword } from '@/modules/user/user.interfaces';
+import IUser, {
+  IActivity,
+  IPassword,
+  TAccountStatus,
+} from '@/modules/user/user.interfaces';
 import PasswordUtils from '@/utils/password.utils';
 import { AvatarSchema } from '@/modules/contacts/contacts.models';
 import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
@@ -14,6 +18,18 @@ const PasswordSchema = new Schema<IPassword>(
   { _id: false }
 );
 
+const AccountStatusSchema = new Schema<TAccountStatus>(
+  {
+    accountStatus: {
+      type: String,
+      enum: AccountStatus,
+      default: AccountStatus.ACTIVE,
+    },
+    lockedAt: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 const UserSchema = new Schema<IUser>(
   {
     name: { type: String, required: true },
@@ -24,11 +40,7 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String, default: null },
     googleId: { type: String, default: null },
     provider: { type: String, required: true },
-    accountStatus: {
-      type: String,
-      enum: AccountStatus,
-      default: AccountStatus.ACTIVE,
-    },
+    accountStatus: AccountStatusSchema,
   },
   { timestamps: true }
 );

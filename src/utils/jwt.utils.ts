@@ -4,6 +4,7 @@ import { env } from '@/env';
 import {
   accessTokenExpiresIn,
   activationTokenExpiresIn,
+  changePasswordPageTokenExpiresIn,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
 } from '@/const';
@@ -40,6 +41,25 @@ const JwtUtils = {
     return jwt.sign(payload, env.JWT_ACTIVATION_TOKEN_SECRET_KEY, {
       expiresIn: activationTokenExpiresIn,
     });
+  },
+  generateChangePasswordPageToken: (payload: TokenPayload | null): string => {
+    if (!payload) {
+      throw new Error(
+        'Generate Change Password Page Token Payload Cant Be Null'
+      );
+    }
+    return jwt.sign(payload, env.JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY, {
+      expiresIn: changePasswordPageTokenExpiresIn,
+    });
+  },
+  verifyChangePasswordPageToken: (token: string | null): JwtPayload => {
+    if (!token) {
+      throw new Error('Change Password Page Token Is Missing');
+    }
+    return jwt.verify(
+      token,
+      env.JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY
+    ) as JwtPayload;
   },
   verifyAccessToken: (token: string | null): JwtPayload => {
     if (!token) {

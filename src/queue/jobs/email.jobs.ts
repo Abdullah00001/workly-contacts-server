@@ -3,6 +3,7 @@ import { IVerificationEmailData } from '@/interfaces/verificationEmailData.inter
 import {
   IResetPasswordSendEmailPayload,
   TAccountLockedEmailPayload,
+  TAccountUnlockedEmailPayload,
   TLoginSuccessEmailPayload,
   TSignupSuccessEmailPayloadData,
 } from '@/modules/user/user.interfaces';
@@ -65,6 +66,15 @@ const EmailQueueJobs = {
     data: TAccountLockedEmailPayload
   ) => {
     await EmailQueue.add('send-account-lock-notification-email', data, {
+      attempts: 3,
+      removeOnComplete: true,
+      backoff: { type: 'exponential', delay: 3000 },
+    });
+  },
+  addAccountUnlockNotificationToQueue: async (
+    data: TAccountUnlockedEmailPayload
+  ) => {
+    await EmailQueue.add('send-account-unlock-notification-email', data, {
       attempts: 3,
       removeOnComplete: true,
       backoff: { type: 'exponential', delay: 3000 },

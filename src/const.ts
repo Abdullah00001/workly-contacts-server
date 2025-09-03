@@ -13,6 +13,7 @@ export const accessTokenExpiresIn = '1d';
 export const refreshTokenExpiresIn = '7d';
 export const recoverSessionExpiresIn = '1d';
 export const activationTokenExpiresIn = '1d';
+export const changePasswordPageTokenExpiresIn = '15m';
 export const serverCacheExpiredIn = '5m';
 export const otpRateLimitMaxCount = 15;
 export const otpRateLimitSlidingWindow = '1m';
@@ -66,11 +67,13 @@ export const AccountActivityMap: Record<
       'Your account password was changed successfully. If you did not perform this action, please secure your account by resetting your password and reviewing recent activity.',
   },
   [ActivityType.ACCOUNT_LOCKED]: {
-    title: '',
-    description: '',
+    title: 'Account Locked',
+    description:
+      'Your account has been temporarily locked due to multiple unsuccessful login attempts. Please verify your identity or contact support to regain access.',
   },
   [ActivityType.ACCOUNT_ACTIVE]: {
-    title: '',
-    description: '',
+    title: 'Account Activated',
+    description:
+      'Your account has been successfully activated and is now ready for use. If you did not initiate this action, please contact support immediately.',
   },
 };

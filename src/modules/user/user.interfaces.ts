@@ -16,13 +16,19 @@ export type TPassword = {
   secret: string | null;
   change_at: string | null;
 };
+
+export type TAccountStatus = {
+  accountStatus: AccountStatus;
+  lockedAt: string | null;
+};
+
 interface IUser extends Document {
   name: string;
   email: string;
   phone: string;
   password: IPassword;
   isVerified: boolean;
-  accountStatus: AccountStatus;
+  accountStatus: TAccountStatus;
   avatar: IImage;
   provider: AuthType;
   googleId: string;
@@ -30,6 +36,7 @@ interface IUser extends Document {
 
 export type TUpdateUserAccountStatus = {
   accountStatus: AccountStatus;
+  lockedAt?: string;
   userId: Types.ObjectId;
 };
 
@@ -261,7 +268,30 @@ export type TAccountLockedEmailPayload = {
   name: string;
   time: string;
   activeLink: string;
-  email:string
+  email: string;
+};
+
+export interface TAccountUnlockedEmailPayload {
+  name: string;
+  time: string;
+  email: string;
+}
+
+export type TProcessChangePasswordAndAccountActivation = {
+  token: string;
+  userId: string;
+  uuid: string;
+  password: string;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+};
+
+export type TChangePasswordAndAccountActivation = {
+  password: string;
+  userId: Types.ObjectId;
 };
 
 export default IUser;

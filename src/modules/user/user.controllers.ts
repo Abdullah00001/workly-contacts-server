@@ -6,6 +6,7 @@ import CookieUtils from '@/utils/cookie.utils';
 import {
   accessTokenExpiresIn,
   activationTokenExpiresIn,
+  changePasswordPageTokenExpiresIn,
   getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
@@ -36,6 +37,8 @@ const {
   // processReSentRecoverAccountOtp,
   // processResetPassword,
   processOAuthCallback,
+  processAccountActivation,
+  processChangePasswordAndAccountActivation,
 } = UserServices;
 
 const UserControllers = {
@@ -452,6 +455,85 @@ const UserControllers = {
         cookieOption(refreshTokenExpiresIn)
       );
       res.redirect(CLIENT_BASE_URL);
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  /**
+   * This handle function is for account activation
+   * @param req Request param for getting request details and data
+   * @param res Response param for getting response details and data
+   * @param next Next param for passing the request to next function
+   * This handler didn't accept any data in body and query.Its only accept data in request params,An valid uuid token.
+   * @return Its return an success response or error response base on query
+   * @error Its throw global error if any incident happened during database query
+   */
+  handleAccountActivation: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { uuid } = req.params;
+      const userId = req.user as string;
+      const token = processAccountActivation(userId);
+      res.cookie(
+        '__actvwithcngpass',
+        token,
+        cookieOption(changePasswordPageTokenExpiresIn)
+      );
+      res.redirect(`${CLIENT_BASE_URL}/activation/change/${uuid}`);
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCheckChangePasswordPageToken: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      res.status(200).json({ success: true, message: 'Token is valid' });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleChangePasswordAndAccountActivation: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { password } = req.body;
+      const token = req.cookies.__actvwithcngpass;
+      const userId = req.user;
+      const { uuid } = req.params;
+      await processChangePasswordAndAccountActivation({
+        userId: userId as string,
+        token,
+        uuid,
+        password,
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+      });
+      res.clearCookie(
+        '__actvwithcngpass',
+        cookieOption(changePasswordPageTokenExpiresIn)
+      );
+      res
+        .status(200)
+        .json({ success: true, message: 'Account activation complete' });
     } catch (error) {
       const err = error as Error;
       logger.error(err.message);

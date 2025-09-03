@@ -27,4 +27,7 @@ export const env: IEnvConfig = {
   ),
   RECAPTCHA_SECRET_KEY: getEnvVariable('RECAPTCHA_SECRET_KEY'),
   SERVER_BASE_URL: getEnvVariable('SERVER_BASE_URL'),
+  JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY: getEnvVariable(
+    'JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY'
+  ),
 };

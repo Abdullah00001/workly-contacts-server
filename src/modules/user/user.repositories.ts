@@ -1,7 +1,9 @@
 import Profile from '@/modules/profile/profile.models';
+import { AccountStatus } from '@/modules/user/user.enums';
 import {
   IResetPasswordRepositoryPayload,
   IUserPayload,
+  TChangePasswordAndAccountActivation,
   TUpdateUserAccountStatus,
 } from '@/modules/user/user.interfaces';
 import User from '@/modules/user/user.models';
@@ -81,20 +83,50 @@ const UserRepositories = {
   updateUserAccountStatus: async ({
     userId,
     accountStatus,
+    lockedAt,
   }: TUpdateUserAccountStatus) => {
     try {
-      const verifiedUser = await User.findByIdAndUpdate(
+      const user = await User.findByIdAndUpdate(
         userId,
-        { $set: { accountStatus } },
+        { $set: { accountStatus: { accountStatus, lockedAt } } },
         { new: true }
       );
-      return verifiedUser;
+      return user;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       } else {
         throw new Error(
           'Unknown Error Occurred In Update User Account Status Operation'
+        );
+      }
+    }
+  },
+  changePasswordAndAccountActivation: async ({
+    password,
+    userId,
+  }: TChangePasswordAndAccountActivation) => {
+    try {
+      const user = await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            password: { secret: password, change_at: new Date().toISOString() },
+            accountStatus: {
+              accountStatus: AccountStatus.ACTIVE,
+              lockedAt: null,
+            },
+          },
+        },
+        { new: true }
+      );
+      return user;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Change Password And Account Activation Operation'
         );
       }
     }

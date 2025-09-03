@@ -29,6 +29,7 @@ import CookieUtils from '@/utils/cookie.utils';
 import axios from 'axios';
 import { env } from '@/env';
 import { v4 as uuidv4 } from 'uuid';
+import { TRequestUser } from '@/types/express';
 
 const { comparePassword } = PasswordUtils;
 const { findUserByEmail, updateUserAccountStatus } = UserRepositories;
@@ -37,6 +38,7 @@ const {
   verifyRefreshToken,
   verifyRecoverToken,
   verifyActivationToken,
+  verifyChangePasswordPageToken,
 } = JwtUtils;
 const { sharedCookieOption } = CookieUtils;
 const {
@@ -128,7 +130,7 @@ const UserMiddlewares = {
   },
   isUserVerified: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { isVerified } = req.user?.user as IUser;
+      const { isVerified } = (req.user as TRequestUser)?.user as IUser;
       if (!isVerified) {
         res
           .status(403)
@@ -200,7 +202,8 @@ const UserMiddlewares = {
   },
   checkPassword: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, email, password, _id } = req.user?.user as IUser;
+      const { name, email, password, _id } = (req.user as TRequestUser)
+        ?.user as IUser;
       const key = `user:login:attempts:${email}`;
       if (!(await comparePassword(req?.body?.password, password.secret))) {
         await redisClient.set(key, 0, 'PX', expiresInTimeUnitToMs('24h'), 'NX');
@@ -258,12 +261,13 @@ const UserMiddlewares = {
             name,
             email,
             time: formatDateTime(new Date().toISOString()),
-            activeLink: `${env.SERVER_BASE_URL}${baseUrl.v1}/${uuid}`,
+            activeLink: `${env.SERVER_BASE_URL}${baseUrl.v1}/auth/active/${uuid}`,
           };
           const pipeline = redisClient.pipeline();
           await updateUserAccountStatus({
             userId: _id as Types.ObjectId,
             accountStatus: AccountStatus.LOCKED,
+            lockedAt: new Date().toISOString(),
           });
           pipeline.set(
             `blacklist:ip:${ip}`,
@@ -308,6 +312,63 @@ const UserMiddlewares = {
         next(error);
       } else {
         logger.error('Unknown Error Occurred In Check Password Middleware');
+        next(error);
+      }
+    }
+  },
+  checkActiveToken: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { uuid } = req.params;
+      // const isBlacklist=await redisClient.exists(`blacklist:uuid:${uuid}`);
+
+      const isExist = await redisClient.get(`user:activation:uuid:${uuid}`);
+      if (!isExist) {
+        res.redirect(`${env.CLIENT_BASE_URL}/activation/${uuid}`);
+        return;
+      }
+      req.user = isExist;
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error('Unknown Error Occurred In Check Active Token Middleware');
+        next(error);
+      }
+    }
+  },
+  checkChangePasswordPageToken: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const token = req.cookies?.__actvwithcngpass;
+      const isExist = await redisClient.exists(`blacklist:jwt:${token}`);
+      if (isExist) {
+        res.status(403).json({ success: false, message: 'Token expired' });
+        return;
+      }
+      if (!token) {
+        res.status(403).json({ success: false, message: 'Token expired' });
+        return;
+      }
+      const decoded = verifyChangePasswordPageToken(token);
+      if (!decoded) {
+        res
+          .status(403)
+          .json({ success: false, message: 'Token expired or invalid' });
+        return;
+      }
+      req.user = decoded.sub;
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error('Unknown Error Occurred In Check Active Token Middleware');
         next(error);
       }
     }

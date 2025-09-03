@@ -23,11 +23,14 @@ const {
   checkActivationToken,
   checkIpBlackList,
   checkLoginAttempts,
+  checkActiveToken,
+  checkChangePasswordPageToken,
 } = UserMiddlewares;
 const {
   handleSignUp,
   handleVerifyUser,
   handleLogin,
+  handleAccountActivation,
   // handleCheck,
   // handleRefreshTokens,ssss
   // handleLogout,
@@ -41,6 +44,8 @@ const {
   // handleCheckR_Stp2,
   // handleCheckR_Stp3,
   handleProcessOAuthCallback,
+  handleCheckChangePasswordPageToken,
+  handleChangePasswordAndAccountActivation,
 } = UserControllers;
 
 const router = Router();
@@ -74,6 +79,15 @@ router
     checkPassword,
     handleLogin
   );
+router
+  .route('/auth/active/:uuid')
+  .get(checkActiveToken, handleAccountActivation);
+router
+  .route('/auth/active/check')
+  .get(checkChangePasswordPageToken, handleCheckChangePasswordPageToken);
+router
+  .route('/auth/active/change/:uuid')
+  .post(checkChangePasswordPageToken, handleChangePasswordAndAccountActivation);
 // router.route('/auth/check').post(checkAccessToken, handleCheck);
 // router.route('/auth/refresh').post(checkRefreshToken, handleRefreshTokens);
 // router.route('/auth/logout').post(checkRefreshToken, handleLogout);
