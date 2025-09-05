@@ -61,7 +61,7 @@ passport.use(
           activity: ActivityType.SIGNUP_SUCCESS,
         }); // attaches to req.user
       }
-      return done(null, { user, activity: ActivityType.LOGIN_FAILED }); // attaches to req.user
+      return done(null, { user, activity: ActivityType.LOGIN_SUCCESS }); // attaches to req.user
     }
   )
 );

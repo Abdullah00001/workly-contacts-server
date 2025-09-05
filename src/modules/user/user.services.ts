@@ -15,6 +15,7 @@ import IUser, {
   TSession,
   TSignupSuccessEmailPayloadData,
   TProcessRefreshToken,
+  TProcessLogout,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
@@ -303,21 +304,32 @@ const UserServices = {
   processLogout: async ({
     accessToken,
     refreshToken,
+    sid,
     userId,
-  }: IUserPayload) => {
+  }: TProcessLogout) => {
     try {
-      await redisClient.set(
+      const pipeline = redisClient.pipeline();
+      pipeline.set(
         `blacklist:jwt:${refreshToken}`,
         refreshToken!,
         'PX',
         expiresInTimeUnitToMs(refreshTokenExpiresIn)
       );
-      await redisClient.set(
+      pipeline.set(
         `blacklist:jwt:${accessToken}`,
         accessToken!,
         'PX',
         expiresInTimeUnitToMs(accessTokenExpiresIn)
       );
+      pipeline.set(
+        `blacklist:sessions:${sid}`,
+        sid,
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      pipeline.srem(`user:${userId}:sessions`, sid as string);
+      pipeline.del(`user:${userId}:sessions:${sid}`);
+      await pipeline.exec();
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -552,7 +564,7 @@ const UserServices = {
         lastUsedAt: new Date().toISOString(),
       };
       let activityPayload: IActivityPayload;
-      if ((activity = ActivityType.SIGNUP_SUCCESS)) {
+      if ((activity === ActivityType.SIGNUP_SUCCESS)) {
         activityPayload = {
           activityType: ActivityType.SIGNUP_SUCCESS,
           title: AccountActivityMap.SIGNUP_SUCCESS.title,
@@ -586,7 +598,7 @@ const UserServices = {
           addSendSignupSuccessNotificationEmailToQueue(emailPayload),
         ]);
       }
-      if ((activity = ActivityType.LOGIN_SUCCESS)) {
+      if ((activity === ActivityType.LOGIN_SUCCESS)) {
         activityPayload = {
           activityType: ActivityType.LOGIN_SUCCESS,
           title: AccountActivityMap.LOGIN_SUCCESS.title,

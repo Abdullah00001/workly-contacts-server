@@ -34,7 +34,7 @@ const {
   handleAccountActivation,
   handleCheck,
   handleRefreshTokens,
-  // handleLogout,
+  handleLogout,
   handleResend,
   // handleFindUser,
   // handleSentRecoverOtp,
@@ -93,7 +93,9 @@ router.route('/auth/check').post(checkAccessToken, checkSession, handleCheck);
 router
   .route('/auth/refresh')
   .post(checkRefreshToken, checkSession, handleRefreshTokens);
-// router.route('/auth/logout').post(checkRefreshToken,checkSession, handleLogout);
+router
+  .route('/auth/logout')
+  .post(checkAccessToken, checkRefreshToken, checkSession, handleLogout);
 // router
 //   .route('/auth/recover/check/stp1')
 //   .post(checkR_stp1Token, handleCheckR_Stp1);

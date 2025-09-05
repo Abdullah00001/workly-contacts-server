@@ -170,12 +170,13 @@ const UserControllers = {
   },
   handleLogout: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { userId } = req.decoded;
+      const { sub, sid } = req.decoded;
       const { accesstoken, refreshtoken } = req.cookies;
       await processLogout({
         accessToken: accesstoken,
         refreshToken: refreshtoken,
-        userId,
+        userId: sub,
+        sid: sid as string,
       });
       res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
       res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));

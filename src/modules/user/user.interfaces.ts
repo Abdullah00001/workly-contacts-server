@@ -299,4 +299,11 @@ export type TProcessRefreshToken = {
   userId: string;
 };
 
+export type TProcessLogout = {
+  sid: string;
+  userId: string;
+  accessToken: string;
+  refreshToken: string;
+};
+
 export default IUser;

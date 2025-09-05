@@ -423,12 +423,10 @@ const UserMiddlewares = {
         `blacklist:sessions:${sid}`
       );
       if (isBlacklisted) {
-        res
-          .status(401)
-          .json({
-            success: false,
-            message: 'Session has expired,Login Required!',
-          });
+        res.status(403).json({
+          success: false,
+          message: 'Session has expired,Login Required!',
+        });
       }
       const isExists = await redisClient.exists(`user:${sub}:sessions:${sid}`);
       if (!isExists) {
@@ -467,9 +465,7 @@ const UserMiddlewares = {
         });
         return;
       }
-      const isBlacklisted = await redisClient.get(
-        `blacklist:refreshToken:${token}`
-      );
+      const isBlacklisted = await redisClient.get(`blacklist:jwt:${token}`);
       if (isBlacklisted) {
         res.status(403).json({
           success: false,

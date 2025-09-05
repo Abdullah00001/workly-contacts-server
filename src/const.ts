@@ -9,7 +9,7 @@ export const corsWhiteList = [
   'https://contacts.workly.ink',
   'http://10.0.0.103:5173',
 ];
-export const accessTokenExpiresIn = '1d';
+export const accessTokenExpiresIn = '1m';
 export const refreshTokenExpiresIn = '7d';
 export const recoverSessionExpiresIn = '1d';
 export const activationTokenExpiresIn = '1d';
