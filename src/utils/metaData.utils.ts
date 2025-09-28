@@ -43,6 +43,10 @@ const ExtractMetaData = {
       const location = (await ExtractMetaData.getLocation(
         ipAddress
       )) as IGeoLocation;
+      /**
+       * TODO
+       * - before pr development to staging branch remove this if{} block
+       */
       if (env.NODE_ENV === 'development') {
         // Mock UAParser.IBrowser
         const mockBrowser: UAParser.IBrowser = {

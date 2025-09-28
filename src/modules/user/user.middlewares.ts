@@ -19,6 +19,7 @@ import {
   accessTokenExpiresIn,
   AccountActivityMap,
   baseUrl,
+  maxOtpResendPerHour,
   otpRateLimitMaxCount,
   otpRateLimitSlidingWindow,
   refreshTokenExpiresIn,
@@ -363,7 +364,7 @@ const UserMiddlewares = {
           .json({ success: false, message: 'Token expired or invalid' });
         return;
       }
-      req.user = decoded.sub;
+      req.user = decoded.sub as string;
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -375,6 +376,18 @@ const UserMiddlewares = {
       }
     }
   },
+  /**
+   * Middleware to validate the user's access token.
+   *
+   * - Ensures an access token exists in cookies.
+   * - Checks if the token is blacklisted (revoked).
+   * - Verifies token validity (expiration, signature).
+   * - Attaches the decoded payload to `req.decoded` on success.
+   *
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
   checkAccessToken: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req?.cookies?.accesstoken;
@@ -388,18 +401,19 @@ const UserMiddlewares = {
       }
       const isBlacklisted = await redisClient.get(`blacklist:jwt:${token}`);
       if (isBlacklisted) {
-        res.status(403).json({
+        res.status(401).json({
           success: false,
-          message: 'Permission Denied',
+          message: 'Unauthorize Request',
           error: 'Accesstoken has been revoked',
         });
         return;
       }
       const decoded = verifyAccessToken(token);
       if (!decoded) {
-        res.status(403).json({
+        res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
+        res.status(401).json({
           success: false,
-          message: 'Permission Denied',
+          message: 'Unauthorize Request',
           error: 'Access Token expired or invalid',
         });
         return;
@@ -416,26 +430,63 @@ const UserMiddlewares = {
       }
     }
   },
+  /**
+   * Middleware to validate the user's session extracted from the refresh token.
+   *
+   * Responsibilities:
+   * - Checks if the session ID (`sid`) is blacklisted (revoked/expired).
+   * - Validates that the session still exists in Redis.
+   * - Cleans up invalid session references and clears cookies if necessary.
+   * - Proceeds to the next middleware if the session is valid.
+   *
+   * Possible responses:
+   * - 401 Unauthorized → if the session is blacklisted or expired.
+   *
+   * @param req - Express request object (must include `decoded` with `sid` and `sub`)
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
   checkSession: async (req: Request, res: Response, next: NextFunction) => {
+    const isLogoutEndpoint = req.path === '/auth/logout';
     try {
       const { sid, sub } = req.decoded;
       const isBlacklisted = await redisClient.exists(
         `blacklist:sessions:${sid}`
       );
-      if (isBlacklisted) {
-        res.status(403).json({
-          success: false,
-          message: 'Session has expired,Login Required!',
-        });
-      }
       const isExists = await redisClient.exists(`user:${sub}:sessions:${sid}`);
+      if (isLogoutEndpoint && !isExists && !isBlacklisted) {
+        const accessToken = req?.cookies?.accesstoken;
+        await redisClient.srem(`user:${sub}:sessions`, sid as string);
+        await redisClient.set(
+          `blacklist:jwt:${accessToken}`,
+          accessToken!,
+          'PX',
+          expiresInTimeUnitToMs(accessTokenExpiresIn)
+        );
+        res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
+        res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
+        res.status(200).json({
+          status: 'success',
+          message: 'Logout successful',
+        });
+        return;
+      }
+      if (isBlacklisted) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorize Request',
+          error: 'Session has expired,Login Required!',
+        });
+        return;
+      }
       if (!isExists) {
         await redisClient.srem(`user:${sub}:sessions`, sid as string);
         res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
         res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
         res.status(401).json({
           success: false,
-          message: 'Session has been expired,Login Required!',
+          message: 'Unauthorize Request',
+          error: 'Session has been expired,Login Required!',
         });
         return;
       }
@@ -450,6 +501,24 @@ const UserMiddlewares = {
       }
     }
   },
+  /**
+   * Middleware to validate the refresh token.
+   *
+   * Responsibilities:
+   * - Ensures a refresh token exists in cookies.
+   * - Checks if the token is blacklisted (revoked).
+   * - Verifies token validity (expiration, signature).
+   * - Attaches the decoded payload to `req.decoded` if valid.
+   * - Allows the server to issue a new access token based on a valid session.
+   *
+   * Possible responses:
+   * - 401 Unauthorized → if the token is missing, revoked, or invalid/expired.
+   *
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
+
   checkRefreshToken: async (
     req: Request,
     res: Response,
@@ -467,18 +536,20 @@ const UserMiddlewares = {
       }
       const isBlacklisted = await redisClient.get(`blacklist:jwt:${token}`);
       if (isBlacklisted) {
-        res.status(403).json({
+        res.status(401).json({
           success: false,
-          message: 'Permission Denied',
+          message: 'Unauthorize Request',
           error: 'Refresh Token has been revoked',
         });
         return;
       }
       const decoded = verifyRefreshToken(token);
       if (!decoded) {
-        res.status(403).json({
+        res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
+        res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
+        res.status(401).json({
           success: false,
-          message: 'Permission Denied',
+          message: 'Unauthorize Request',
           error: 'Refresh Token expired or invalid',
         });
         return;
@@ -497,6 +568,11 @@ const UserMiddlewares = {
       }
     }
   },
+  /**
+   * This Middleware For Recover Account Step 1 Token Check So That Step 1 Will Secure And Prevent Unwanted Situation
+   * @param req Http Request Container
+   * @param res Http Response Container
+   */
   checkR_stp1Token: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req?.cookies?.r_stp1;
@@ -535,6 +611,11 @@ const UserMiddlewares = {
       }
     }
   },
+  /**
+   * This Middleware For Recover Account Step 2 Token Check So That Step 2 Will Secure And Prevent Unwanted Situation
+   * @param req Http Request Container
+   * @param res Http Response Container
+   */
   checkR_stp2Token: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req?.cookies?.r_stp2;
@@ -573,6 +654,11 @@ const UserMiddlewares = {
       }
     }
   },
+  /**
+   * This Middleware For Recover Account Step 3 Token Check So That Step 3 Will Secure And Prevent Unwanted Situation
+   * @param req Http Request Container
+   * @param res Http Response Container
+   */
   checkR_stp3Token: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req?.cookies?.r_stp3;
@@ -646,6 +732,33 @@ const UserMiddlewares = {
       }
     }
   },
+  /**
+   * Middleware to apply rate limiting and cooldown for the "resend OTP email" endpoint.
+   *
+   * Purpose:
+   * - Prevents users from sending repeated OTP requests in quick succession.
+   * - Mitigates spam, bot abuse, or accidental multiple requests that could overload the server.
+   *
+   * Behavior:
+   * 1. Checks if a cooldown (`ttlKey`) already exists for the user:
+   *    - If yes, blocks the request with a 400 response (`Try Again Later`).
+   * 2. Checks if a count (`countKey`) exists:
+   *    - If not, this is the first attempt:
+   *      - Creates the cooldown key and initial count in Redis.
+   *    - If yes, user has made previous attempts:
+   *      - Increments the cooldown count.
+   *      - Extends the cooldown duration **proportionally to the number of previous attempts** (linear backoff).
+   *
+   * Redis keys:
+   * - `ttlKey` → Tracks the active cooldown period per user.
+   * - `countKey` → Tracks the number of resend OTP attempts for the user.
+   *
+   * @param req - Express request object (must include `decoded.sub` for user identification)
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   * @returns JSON response with status 400 if cooldown is active, otherwise calls `next()`
+   * @throws Forwards any Redis or unexpected errors to `next()`
+   */
   resendOtpEmailCoolDown: async (
     req: Request,
     res: Response,
@@ -671,16 +784,30 @@ const UserMiddlewares = {
         pipeline.set(ttlKey, sub, 'PX', initialExpireAt);
         pipeline.set(countKey, 1, 'PX', 1 * 60 * 60 * 1000);
         await pipeline.exec();
+        req.availableAt = Date.now() + initialExpireAt;
         next();
       } else {
-        const pipeline = redisClient.pipeline();
         const currentCoolDownCount = Number(await redisClient.get(countKey));
+        if (currentCoolDownCount >= maxOtpResendPerHour) {
+          const countTtl = await redisClient.pttl(countKey);
+          res.status(429).json({
+            success: false,
+            message: 'Too many attempts. Please try again later.',
+            nextAvailableAt: Date.now() + countTtl,
+          });
+          return;
+        }
+        const pipeline = redisClient.pipeline();
         const coolDownCount = currentCoolDownCount + 1;
-        const expireAt =
-          coolDownCount * expiresInTimeUnitToMs(resendOtpEmailCoolDownWindow);
+        const expireAt = Math.min(
+          Math.pow(2, coolDownCount - 1) *
+            expiresInTimeUnitToMs(resendOtpEmailCoolDownWindow),
+          60 * 60 * 1000
+        );
         pipeline.set(ttlKey, sub, 'PX', expireAt);
         pipeline.set(countKey, coolDownCount, 'KEEPTTL');
         await pipeline.exec();
+        req.availableAt = Date.now() + expireAt;
         next();
       }
     } catch (error) {
@@ -712,7 +839,7 @@ const UserMiddlewares = {
         `blacklist:actv_token:${token}`
       );
       if (isBlacklisted) {
-        res.status(403).json({
+        res.status(401).json({
           success: false,
           message: 'Permission Denied',
           error: 'actv Token has been revoked',
@@ -721,7 +848,7 @@ const UserMiddlewares = {
       }
       const decoded = verifyActivationToken(token);
       if (!decoded) {
-        res.status(403).json({
+        res.status(401).json({
           success: false,
           message: 'Permission Denied',
         });
@@ -744,7 +871,7 @@ const UserMiddlewares = {
       const ip = getRealIP(req);
       const isBlacklisted = await redisClient.get(`blacklist:ip:${ip}`);
       if (isBlacklisted) {
-        res.status(400).json({
+        res.status(403).json({
           success: false,
           message:
             'Access denied: Your IP address has been temporarily blocked due to suspicious activity. Please try again later or contact support if you believe this is a mistake.',

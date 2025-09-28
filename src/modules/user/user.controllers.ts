@@ -31,6 +31,7 @@ const {
   processRefreshToken,
   processLogout,
   processResend,
+  processCheckResendStatus,
   // processFindUser,
   // processSentRecoverAccountOtp,
   // processVerifyOtp,
@@ -76,15 +77,30 @@ const UserControllers = {
       next(error);
     }
   },
-  handleCheck: (req: Request, res: Response, next: NextFunction) => {
+  /**
+   *
+   */
+  handleCheckActivationTokenValidity: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      res.status(204).send();
+      res.status(200).json({
+        success: true,
+        message: 'Token Is Valid',
+      });
     } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
+      logger.error(error);
       next(error);
     }
   },
+  /**
+   * Verify User Signup User Email
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
   handleVerifyUser: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { sub } = req?.decoded as TokenPayload;
@@ -118,19 +134,63 @@ const UserControllers = {
       next(error);
     }
   },
+  /**
+   * Resend The Otp For Verify Signup User Email
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
   handleResend: async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const availableAt = req.availableAt;
       const { sub } = req?.decoded;
       await processResend(sub);
       res.status(200).json({
         success: true,
         message: 'Verification Email Resend Successful',
+        data: { availableAt },
       });
     } catch (error) {
       logger.error(error);
       next(error);
     }
   },
+  handleCheckResendStatus: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { sub } = req.decoded;
+    try {
+      const data = await processCheckResendStatus({ userId: sub });
+      res.status(200).json({
+        success: true,
+        message: 'Availability check successful',
+        data,
+      });
+      return;
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+  /**
+   * AccessToken Check Handler
+   *
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
+  handleCheck: (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(204).send();
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+
   handleLogin: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { user } = req.user as TRequestUser;
@@ -168,6 +228,20 @@ const UserControllers = {
       next(error);
     }
   },
+  /**
+   * Handler to log out a user and invalidate their session.
+   *
+   * Responsibilities:
+   * - Extracts `sub` (user ID) and `sid` (session ID) from the decoded token.
+   * - Calls `processLogout` to revoke the access and refresh tokens in Redis.
+   * - Clears authentication cookies (`accesstoken`, `refreshtoken`).
+   * - Responds with a 200 status and a success message on completion.
+   *
+   * @param req - Express request object (must include `decoded`)
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
+
   handleLogout: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { sub, sid } = req.decoded;

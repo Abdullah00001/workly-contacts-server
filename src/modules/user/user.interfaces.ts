@@ -303,7 +303,11 @@ export type TProcessLogout = {
   sid: string;
   userId: string;
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
+};
+
+export type TProcessCheckResendStatus = {
+  userId: string;
 };
 
 export default IUser;

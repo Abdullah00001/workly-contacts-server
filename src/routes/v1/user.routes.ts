@@ -36,6 +36,7 @@ const {
   handleRefreshTokens,
   handleLogout,
   handleResend,
+  handleCheckResendStatus,
   // handleFindUser,
   // handleSentRecoverOtp,
   // handleVerifyRecoverOtp,
@@ -47,30 +48,32 @@ const {
   handleProcessOAuthCallback,
   handleCheckChangePasswordPageToken,
   handleChangePasswordAndAccountActivation,
+  handleCheckActivationTokenValidity,
 } = UserControllers;
 
 const router = Router();
 
+// Signup Route
 router
   .route('/auth/signup')
   .post(checkIpBlackList, isSignupUserExist, handleSignUp);
+// Verify Email Page Protection Endpoint
+router
+  .route('/auth/verify/check')
+  .get(checkActivationToken, handleCheckActivationTokenValidity);
+// Verify User Signup User Email With Otp Route
 router
   .route('/auth/verify')
-  .post(
-    checkIpBlackList,
-    checkActivationToken,
-    otpRateLimiter,
-    checkOtp,
-    handleVerifyUser
-  );
+  .post(checkActivationToken, otpRateLimiter, checkOtp, handleVerifyUser);
+// Resend Otp For Signup User Email Route
 router
   .route('/auth/resend')
-  .post(
-    checkIpBlackList,
-    checkActivationToken,
-    resendOtpEmailCoolDown,
-    handleResend
-  );
+  .post(checkActivationToken, resendOtpEmailCoolDown, handleResend);
+// check resend otp timer for sync with client
+router
+  .route('/auth/resend/status')
+  .get(checkActivationToken, handleCheckResendStatus);
+// Login Route
 router
   .route('/auth/login')
   .post(
@@ -80,6 +83,27 @@ router
     checkPassword,
     handleLogin
   );
+// Check Is User Authenticate Or Not Using AccessToken Route
+router.route('/auth/check').get(checkAccessToken, checkSession, handleCheck);
+// Refresh User AccessToken Based On RefreshToken And Session
+router
+  .route('/auth/refresh')
+  .post(checkRefreshToken, checkSession, handleRefreshTokens);
+// Logout Route
+router.route('/auth/logout').post(checkAccessToken, checkSession, handleLogout);
+router
+  .route('/auth/google')
+  .get(passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.route('/google/callback').get(
+  passport.authenticate('google', {
+    failureRedirect: `${CLIENT_BASE_URL}/login?error=user_not_found`,
+    session: false,
+  }),
+  handleProcessOAuthCallback
+);
+
+// These Routes Are For Account Unlock
 router
   .route('/auth/active/:uuid')
   .get(checkActiveToken, handleAccountActivation);
@@ -89,13 +113,8 @@ router
 router
   .route('/auth/active/change/:uuid')
   .post(checkChangePasswordPageToken, handleChangePasswordAndAccountActivation);
-router.route('/auth/check').post(checkAccessToken, checkSession, handleCheck);
-router
-  .route('/auth/refresh')
-  .post(checkRefreshToken, checkSession, handleRefreshTokens);
-router
-  .route('/auth/logout')
-  .post(checkAccessToken, checkRefreshToken, checkSession, handleLogout);
+
+//These Routes Are For Recover Or Forget Password
 // router
 //   .route('/auth/recover/check/stp1')
 //   .post(checkR_stp1Token, handleCheckR_Stp1);
@@ -122,17 +141,5 @@ router
 // router
 //   .route('/auth/recover/reset')
 //   .patch(checkR_stp3Token, handleResetPassword);
-
-router
-  .route('/auth/google')
-  .get(passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-router.route('/google/callback').get(
-  passport.authenticate('google', {
-    failureRedirect: `${CLIENT_BASE_URL}/login?error=user_not_found`,
-    session: false,
-  }),
-  handleProcessOAuthCallback
-);
 
 export default router;

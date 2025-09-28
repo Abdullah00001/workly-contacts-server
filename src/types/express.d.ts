@@ -7,8 +7,9 @@ export type TRequestUser = { user: IUser; activity?: ActivityType };
 declare global {
   namespace Express {
     interface Request {
-      user?: TRequestUser | string;
+      user: TRequestUser | string;
       decoded: TokenPayload;
+      availableAt: number;
     }
   }
 }

@@ -16,12 +16,14 @@ import IUser, {
   TSignupSuccessEmailPayloadData,
   TProcessRefreshToken,
   TProcessLogout,
+  TProcessCheckResendStatus,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
 import {
   accessTokenExpiresIn,
   AccountActivityMap,
+  maxOtpResendPerHour,
   otpExpireAt,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
@@ -217,6 +219,28 @@ const UserServices = {
       }
     }
   },
+  processCheckResendStatus: async ({ userId }: TProcessCheckResendStatus) => {
+    const ttlKey = `otp:resendOtpEmailCoolDown:${userId}`;
+    const countKey = `otp:resendOtpEmailCoolDown:${userId}:count`;
+    try {
+      const currentCoolDownCount = Number(await redisClient.get(countKey));
+      if (currentCoolDownCount >= maxOtpResendPerHour) {
+        const countTtl = await redisClient.pttl(countKey);
+        if (countTtl > 0) return { availableAt: Date.now() + countTtl };
+      }
+      const countTtl = await redisClient.pttl(ttlKey);
+      if (countTtl > 0) return { availableAt: Date.now() + countTtl };
+      return { availableAt: Date.now() };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Check Resend Status Service'
+        );
+      }
+    }
+  },
   processRefreshToken: (payload: TProcessRefreshToken) => {
     const { sid, userId } = payload;
     const accessToken = generateAccessToken({
@@ -301,6 +325,24 @@ const UserServices = {
       }
     }
   },
+  /**
+   * Service to handle user logout by revoking tokens and cleaning up sessions.
+   *
+   * Responsibilities:
+   * - Blacklists the provided refresh token with its TTL.
+   * - Blacklists the provided access token with its TTL.
+   * - Marks the session ID (`sid`) as blacklisted with the refresh token TTL.
+   * - Removes the session ID from the user's active session set.
+   * - Deletes the specific session record from Redis.
+   *
+   * @param params - Object containing logout details
+   * @param params.accessToken - The access token to revoke
+   * @param params.refreshToken - The refresh token to revoke
+   * @param params.sid - Session ID to blacklist and remove
+   * @param params.userId - The user ID associated with the session
+   * @throws Will throw an error if Redis operations fail
+   */
+
   processLogout: async ({
     accessToken,
     refreshToken,
@@ -309,12 +351,14 @@ const UserServices = {
   }: TProcessLogout) => {
     try {
       const pipeline = redisClient.pipeline();
-      pipeline.set(
-        `blacklist:jwt:${refreshToken}`,
-        refreshToken!,
-        'PX',
-        expiresInTimeUnitToMs(refreshTokenExpiresIn)
-      );
+      if (refreshToken) {
+        pipeline.set(
+          `blacklist:jwt:${refreshToken}`,
+          refreshToken!,
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+      }
       pipeline.set(
         `blacklist:jwt:${accessToken}`,
         accessToken!,
@@ -564,7 +608,7 @@ const UserServices = {
         lastUsedAt: new Date().toISOString(),
       };
       let activityPayload: IActivityPayload;
-      if ((activity === ActivityType.SIGNUP_SUCCESS)) {
+      if (activity === ActivityType.SIGNUP_SUCCESS) {
         activityPayload = {
           activityType: ActivityType.SIGNUP_SUCCESS,
           title: AccountActivityMap.SIGNUP_SUCCESS.title,
@@ -598,7 +642,7 @@ const UserServices = {
           addSendSignupSuccessNotificationEmailToQueue(emailPayload),
         ]);
       }
-      if ((activity === ActivityType.LOGIN_SUCCESS)) {
+      if (activity === ActivityType.LOGIN_SUCCESS) {
         activityPayload = {
           activityType: ActivityType.LOGIN_SUCCESS,
           title: AccountActivityMap.LOGIN_SUCCESS.title,
