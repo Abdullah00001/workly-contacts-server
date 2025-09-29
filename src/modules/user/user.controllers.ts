@@ -10,6 +10,7 @@ import {
   getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
+  refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
 import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { env } from '@/env';
@@ -194,6 +195,7 @@ const UserControllers = {
   handleLogin: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { user } = req.user as TRequestUser;
+      const { rememberMe } = req.body;
       const { browser, device, location, os, ip } =
         await getClientMetaData(req);
       const { accessToken, refreshToken } = await processLogin({
@@ -203,6 +205,7 @@ const UserControllers = {
         location: `${location.city} ${location.country}`,
         os: os.name as string,
         user,
+        rememberMe,
       });
       res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
       res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
@@ -215,7 +218,11 @@ const UserControllers = {
       res.cookie(
         'refreshtoken',
         refreshToken,
-        cookieOption(refreshTokenExpiresIn)
+        cookieOption(
+          rememberMe
+            ? refreshTokenExpiresIn
+            : refreshTokenExpiresInWithoutRememberMe
+        )
       );
       res.status(200).json({
         status: 'success',

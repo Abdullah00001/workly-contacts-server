@@ -7,10 +7,11 @@ export const corsWhiteList = [
   'https://amar-contacts.onrender.com',
   'https://amar-contacts-staging-client.onrender.com',
   'https://contacts.workly.ink',
-  'http://10.0.0.103:5173',
+  'http://10.0.0.103:3000',
 ];
 export const accessTokenExpiresIn = '15m';
 export const refreshTokenExpiresIn = '7d';
+export const refreshTokenExpiresInWithoutRememberMe = '1d';
 export const recoverSessionExpiresIn = '1d';
 export const activationTokenExpiresIn = '1d';
 export const changePasswordPageTokenExpiresIn = '15m';

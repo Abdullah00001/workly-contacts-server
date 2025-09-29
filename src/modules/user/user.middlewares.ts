@@ -87,14 +87,14 @@ const UserMiddlewares = {
       const { email } = req.body;
       const isUserExist = await findUserByEmail(email);
       if (!isUserExist) {
-        res.status(404).json({
+        res.status(401).json({
           success: false,
           message: 'Invalid Credential,Check Your Email And Password',
         });
         return;
       }
       if (!isUserExist.isVerified) {
-        res.status(400).json({ success: false, message: 'User Not Verified' });
+        res.status(403).json({ success: false, message: 'User Not Verified' });
         return;
       }
       req.user = { user: isUserExist };

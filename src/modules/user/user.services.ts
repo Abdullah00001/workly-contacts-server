@@ -27,6 +27,7 @@ import {
   otpExpireAt,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
+  refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
 import JwtUtils from '@/utils/jwt.utils';
 import mongoose, { Types } from 'mongoose';
@@ -256,6 +257,7 @@ const UserServices = {
     ipAddress,
     location,
     os,
+    rememberMe,
   }: TProcessLoginPayload): Promise<IUserPayload> => {
     try {
       const { _id, name, email } = user;
@@ -267,6 +269,7 @@ const UserServices = {
       const refreshToken = generateRefreshToken({
         sid,
         sub: _id as string,
+        rememberMe,
       });
       const session: TSession = {
         browser,
@@ -276,7 +279,9 @@ const UserServices = {
         createdAt: new Date().toISOString(),
         sessionId: sid,
         userId: _id as string,
-        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        expiredAt: rememberMe
+          ? calculateFutureDate(refreshTokenExpiresIn)
+          : calculateFutureDate(refreshTokenExpiresInWithoutRememberMe),
         lastUsedAt: new Date().toISOString(),
       };
       const activityPayload: IActivityPayload = {

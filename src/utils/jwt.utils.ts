@@ -7,6 +7,7 @@ import {
   changePasswordPageTokenExpiresIn,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
+  refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
 
 const JwtUtils = {
@@ -22,9 +23,16 @@ const JwtUtils = {
     if (!payload) {
       throw new Error('Generate RefreshToken Payload Cant Be Null');
     }
-    return jwt.sign(payload, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
-      expiresIn: refreshTokenExpiresIn,
-    });
+    const { rememberMe, sub, sid } = payload;
+    if (rememberMe) {
+      return jwt.sign({ sub, sid }, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
+        expiresIn: refreshTokenExpiresIn,
+      });
+    } else {
+      return jwt.sign({ sub, sid }, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
+        expiresIn: refreshTokenExpiresInWithoutRememberMe,
+      });
+    }
   },
   generateRecoverToken: (payload: TokenPayload | null): string => {
     if (!payload) {

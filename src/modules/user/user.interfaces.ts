@@ -251,6 +251,7 @@ export type TProcessLoginPayload = {
   os: string;
   location: string;
   ipAddress: string;
+  rememberMe: boolean;
 };
 
 export type TLoginSuccessEmailPayload = {
