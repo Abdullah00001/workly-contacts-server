@@ -17,6 +17,8 @@ import IUser, {
   TProcessRefreshToken,
   TProcessLogout,
   TProcessCheckResendStatus,
+  TProcessRetrieveSessionsForClearDevice,
+  TProcessClearDeviceAndLoginPayload,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
@@ -242,13 +244,151 @@ const UserServices = {
       }
     }
   },
-  processRefreshToken: (payload: TProcessRefreshToken) => {
-    const { sid, userId } = payload;
-    const accessToken = generateAccessToken({
-      sid,
-      sub: userId as string,
-    });
-    return { accessToken };
+  processRefreshToken: async (payload: TProcessRefreshToken) => {
+    try {
+      const { sid, userId } = payload;
+      const accessToken = generateAccessToken({
+        sid,
+        sub: userId as string,
+      });
+      const session = await redisClient.get(`user:${userId}:sessions:${sid}`);
+      const parsedSession: TSession = JSON.parse(session as string);
+      const updatedSession: TSession = {
+        ...parsedSession,
+        lastUsedAt: new Date().toISOString(),
+      };
+      await redisClient.set(
+        `user:${userId}:sessions:${sid}`,
+        JSON.stringify(updatedSession),
+        'KEEPTTL'
+      );
+      return { accessToken };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Refresh Token Service'
+        );
+      }
+    }
+  },
+  processRetrieveSessionsForClearDevice: async ({
+    userId,
+  }: TProcessRetrieveSessionsForClearDevice): Promise<TSession[]> => {
+    try {
+      const sessionIds = await redisClient.smembers(`user:${userId}:sessions`);
+      const sessions: TSession[] = await Promise.all(
+        sessionIds.map(async (sid) => {
+          const session: string = (await redisClient.get(
+            `user:${userId}:sessions:${sid}`
+          )) as string;
+          return JSON.parse(session) as TSession;
+        })
+      );
+      return sessions;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Retrieve Sessions For Clear Device Service'
+        );
+      }
+    }
+  },
+  processClearDeviceAndLogin: async ({
+    browser,
+    deviceType,
+    devices,
+    ipAddress,
+    location,
+    os,
+    rememberMe,
+    user,
+  }: TProcessClearDeviceAndLoginPayload) => {
+    try {
+      const { email, name, _id } = await findUserById(user);
+      const sid = uuidv4();
+      const accessToken = generateAccessToken({
+        sid,
+        sub: _id as string,
+      });
+      const refreshToken = generateRefreshToken({
+        sid,
+        sub: _id as string,
+        rememberMe,
+      });
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: _id as string,
+        expiredAt: rememberMe
+          ? calculateFutureDate(refreshTokenExpiresIn)
+          : calculateFutureDate(refreshTokenExpiresInWithoutRememberMe),
+        lastUsedAt: new Date().toISOString(),
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.LOGIN_SUCCESS,
+        title: AccountActivityMap.LOGIN_SUCCESS.title,
+        description: AccountActivityMap.LOGIN_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: _id as Types.ObjectId,
+      };
+      const emailPayload: TLoginSuccessEmailPayload = {
+        browser,
+        device: deviceType,
+        email,
+        ip: ipAddress,
+        location,
+        name,
+        os,
+        time: formatDateTime(new Date().toISOString()),
+      };
+      const redisPipeLine = redisClient.pipeline();
+      devices.forEach((sid) => {
+        redisPipeLine.set(
+          `blacklist:sessions:${sid}`,
+          sid,
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+        redisPipeLine.srem(`user:${_id}:sessions`, sid as string);
+        redisPipeLine.del(`user:${_id}:sessions:${sid}`);
+      });
+      redisPipeLine.set(
+        `user:${_id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+      await Promise.all([
+        redisPipeLine.exec(),
+        loginSuccessActivitySavedInDb(activityPayload),
+        addLoginSuccessNotificationEmailToQueue(emailPayload),
+      ]);
+      return {
+        accessToken: accessToken!,
+        refreshToken: refreshToken!,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Clear Device And Login Service'
+        );
+      }
+    }
   },
   processLogin: async ({
     user,

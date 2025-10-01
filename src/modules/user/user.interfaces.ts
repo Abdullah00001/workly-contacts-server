@@ -311,4 +311,19 @@ export type TProcessCheckResendStatus = {
   userId: string;
 };
 
+export type TProcessRetrieveSessionsForClearDevice = {
+  userId: string;
+};
+
+export type TProcessClearDeviceAndLoginPayload = {
+  user: string;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+  devices: string[];
+  rememberMe:boolean
+};
+
 export default IUser;

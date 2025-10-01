@@ -19,6 +19,7 @@ import {
   accessTokenExpiresIn,
   AccountActivityMap,
   baseUrl,
+  clearDevicePageTokenExpireIn,
   maxOtpResendPerHour,
   otpRateLimitMaxCount,
   otpRateLimitSlidingWindow,
@@ -42,6 +43,8 @@ const {
   verifyRecoverToken,
   verifyActivationToken,
   verifyChangePasswordPageToken,
+  generateClearDevicePageToken,
+  verifyClearDevicePageToken,
 } = JwtUtils;
 const { sharedCookieOption, cookieOption } = CookieUtils;
 const {
@@ -315,6 +318,78 @@ const UserMiddlewares = {
         next(error);
       } else {
         logger.error('Unknown Error Occurred In Check Password Middleware');
+        next(error);
+      }
+    }
+  },
+  checkSessionsLimit: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { _id } = (req.user as TRequestUser)?.user as IUser;
+      const sessions = await redisClient.smembers(`user:${_id}:sessions`);
+      if (sessions.length === 3) {
+        const { rememberMe } = req.body;
+        const token = generateClearDevicePageToken({
+          sub: _id as string,
+          rememberMe,
+        });
+        res.cookie(
+          '__clear_device',
+          token,
+          cookieOption(clearDevicePageTokenExpireIn)
+        );
+        res.status(429).json({ success: false, message: 'Login limit exceed' });
+        return;
+      }
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error(
+          'Unknown Error Occurred In Check Session Limit Middleware'
+        );
+        next(error);
+      }
+    }
+  },
+  checkClearDevicePageToken: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const token = req.cookies?.__clear_device;
+      const isExist = await redisClient.exists(`blacklist:jwt:${token}`);
+      if (isExist) {
+        res.status(403).json({ success: false, message: 'Token expired' });
+        return;
+      }
+      if (!token) {
+        res.status(403).json({ success: false, message: 'Token expired' });
+        return;
+      }
+      const decoded = verifyClearDevicePageToken(token);
+      if (!decoded) {
+        res
+          .status(403)
+          .json({ success: false, message: 'Token expired or invalid' });
+        return;
+      }
+      req.user = decoded.sub as string;
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error(
+          'Unknown Error Occurred In Check Session Limit Middleware'
+        );
         next(error);
       }
     }

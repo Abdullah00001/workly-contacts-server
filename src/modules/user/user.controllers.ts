@@ -7,6 +7,7 @@ import {
   accessTokenExpiresIn,
   activationTokenExpiresIn,
   changePasswordPageTokenExpiresIn,
+  clearDevicePageTokenExpireIn,
   getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
@@ -41,6 +42,8 @@ const {
   processOAuthCallback,
   processAccountActivation,
   processChangePasswordAndAccountActivation,
+  processRetrieveSessionsForClearDevice,
+  processClearDeviceAndLogin,
 } = UserServices;
 
 const UserControllers = {
@@ -191,7 +194,75 @@ const UserControllers = {
       next(error);
     }
   },
-
+  handleRetrieveSessionsForClearDevice: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const sessions = await processRetrieveSessionsForClearDevice({
+        userId: sub,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Sessions retrieve successful',
+        data: sessions,
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleClearDeviceAndLogin: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub, rememberMe } = req.decoded;
+      const { devices } = req.body;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processClearDeviceAndLogin({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        user: sub as string,
+        rememberMe: rememberMe as boolean,
+        devices: devices,
+      });
+      res.clearCookie(
+        '__clear_device',
+        cookieOption(clearDevicePageTokenExpireIn)
+      );
+      res.cookie(
+        'accesstoken',
+        accessToken,
+        cookieOption(accessTokenExpiresIn)
+      );
+      res.cookie(
+        'refreshtoken',
+        refreshToken,
+        cookieOption(
+          rememberMe
+            ? refreshTokenExpiresIn
+            : refreshTokenExpiresInWithoutRememberMe
+        )
+      );
+      res.status(200).json({
+        status: 'success',
+        message: 'Login successful',
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
   handleLogin: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { user } = req.user as TRequestUser;
@@ -272,10 +343,14 @@ const UserControllers = {
       next(error);
     }
   },
-  handleRefreshTokens: (req: Request, res: Response, next: NextFunction) => {
+  handleRefreshTokens: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const { sid, userId } = req.decoded;
-      const { accessToken } = processRefreshToken({
+      const { accessToken } = await processRefreshToken({
         userId,
         sid: sid as string,
       });
@@ -602,6 +677,19 @@ const UserControllers = {
       res
         .status(200)
         .json({ success: true, message: 'Account activation complete' });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCheckClearDevicePageToken: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      res.status(200).json({ success: true, message: 'Token Is Validate' });
     } catch (error) {
       const err = error as Error;
       logger.error(err.message);

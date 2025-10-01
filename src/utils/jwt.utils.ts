@@ -5,6 +5,7 @@ import {
   accessTokenExpiresIn,
   activationTokenExpiresIn,
   changePasswordPageTokenExpiresIn,
+  clearDevicePageTokenExpireIn,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
   refreshTokenExpiresInWithoutRememberMe,
@@ -59,6 +60,25 @@ const JwtUtils = {
     return jwt.sign(payload, env.JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY, {
       expiresIn: changePasswordPageTokenExpiresIn,
     });
+  },
+  generateClearDevicePageToken: (payload: TokenPayload | null): string => {
+    if (!payload) {
+      throw new Error(
+        'Generate Change Password Page Token Payload Cant Be Null'
+      );
+    }
+    return jwt.sign(payload, env.JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY, {
+      expiresIn: clearDevicePageTokenExpireIn,
+    });
+  },
+  verifyClearDevicePageToken: (token: string | null): JwtPayload => {
+    if (!token) {
+      throw new Error('Clear Device Page Token Is Missing');
+    }
+    return jwt.verify(
+      token,
+      env.JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY
+    ) as JwtPayload;
   },
   verifyChangePasswordPageToken: (token: string | null): JwtPayload => {
     if (!token) {

@@ -26,7 +26,7 @@ export const emailRegex = /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/;
 export const baseUrl = {
   v1: '/api/v1',
 };
-
+export const clearDevicePageTokenExpireIn = '60m';
 export const getLocationFromIP = async (ip: string) => {
   try {
     // Using ip-api.com (free tier)
