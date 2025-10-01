@@ -26,6 +26,8 @@ const {
   checkActiveToken,
   checkChangePasswordPageToken,
   checkSession,
+  checkSessionsLimit,
+  checkClearDevicePageToken,
 } = UserMiddlewares;
 const {
   handleSignUp,
@@ -37,6 +39,7 @@ const {
   handleLogout,
   handleResend,
   handleCheckResendStatus,
+  handleCheckClearDevicePageToken,
   // handleFindUser,
   // handleSentRecoverOtp,
   // handleVerifyRecoverOtp,
@@ -49,6 +52,8 @@ const {
   handleCheckChangePasswordPageToken,
   handleChangePasswordAndAccountActivation,
   handleCheckActivationTokenValidity,
+  handleRetrieveSessionsForClearDevice,
+  handleClearDeviceAndLogin,
 } = UserControllers;
 
 const router = Router();
@@ -81,8 +86,21 @@ router
     checkLoginAttempts,
     isUserExistAndVerified,
     checkPassword,
+    checkSessionsLimit,
     handleLogin
   );
+// clear device page token check
+router
+  .route('/auth/check-clear-device')
+  .get(checkClearDevicePageToken, handleCheckClearDevicePageToken);
+// Retrieve Sessions For Clear Device
+router
+  .route('/auth/clear-device/sessions')
+  .get(checkClearDevicePageToken, handleRetrieveSessionsForClearDevice);
+// clear device and login
+router
+  .route('/auth/clear-device')
+  .post(checkClearDevicePageToken, handleClearDeviceAndLogin);
 // Check Is User Authenticate Or Not Using AccessToken Route
 router.route('/auth/check').get(checkAccessToken, checkSession, handleCheck);
 // Refresh User AccessToken Based On RefreshToken And Session
