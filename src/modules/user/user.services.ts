@@ -41,7 +41,11 @@ import { OtpUtilsSingleton } from '@/singletons';
 import { v4 as uuidv4 } from 'uuid';
 import DateUtils from '@/utils/date.utils';
 import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
-import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+} from '@/modules/user/user.enums';
 import { TRequestUser } from '@/types/express';
 
 const { hashPassword } = PasswordUtils;
@@ -306,6 +310,7 @@ const UserServices = {
     os,
     rememberMe,
     user,
+    provider,
   }: TProcessClearDeviceAndLoginPayload) => {
     try {
       const { email, name, _id } = await findUserById(user);
@@ -318,6 +323,7 @@ const UserServices = {
         sid,
         sub: _id as string,
         rememberMe,
+        provider,
       });
       const session: TSession = {
         browser,
@@ -327,9 +333,10 @@ const UserServices = {
         createdAt: new Date().toISOString(),
         sessionId: sid,
         userId: _id as string,
-        expiredAt: rememberMe
-          ? calculateFutureDate(refreshTokenExpiresIn)
-          : calculateFutureDate(refreshTokenExpiresInWithoutRememberMe),
+        expiredAt:
+          rememberMe || provider === AuthType.GOOGLE
+            ? calculateFutureDate(refreshTokenExpiresIn)
+            : calculateFutureDate(refreshTokenExpiresInWithoutRememberMe),
         lastUsedAt: new Date().toISOString(),
       };
       const activityPayload: IActivityPayload = {
@@ -364,11 +371,15 @@ const UserServices = {
         redisPipeLine.srem(`user:${_id}:sessions`, sid as string);
         redisPipeLine.del(`user:${_id}:sessions:${sid}`);
       });
+      const sessionExpireIn =
+        rememberMe || provider === AuthType.GOOGLE
+          ? refreshTokenExpiresIn
+          : refreshTokenExpiresInWithoutRememberMe;
       redisPipeLine.set(
         `user:${_id}:sessions:${sid}`,
         JSON.stringify(session),
         'PX',
-        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        expiresInTimeUnitToMs(sessionExpireIn)
       );
       redisPipeLine.sadd(`user:${_id}:sessions`, sid);
       await Promise.all([

@@ -13,7 +13,11 @@ import EmailQueueJobs from '@/queue/jobs/email.jobs';
 import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
 import ExtractMetaData from '@/utils/metaData.utils';
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
-import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+} from '@/modules/user/user.enums';
 import { Types } from 'mongoose';
 import {
   accessTokenExpiresIn,
@@ -100,7 +104,7 @@ const UserMiddlewares = {
         res.status(403).json({ success: false, message: 'User Not Verified' });
         return;
       }
-      req.user = { user: isUserExist };
+      req.user = { user: isUserExist } as TRequestUser;
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -122,7 +126,7 @@ const UserMiddlewares = {
         res.status(404).json({ success: false, message: 'User Not Found' });
         return;
       }
-      req.user = { user: isUserExist };
+      req.user = { user: isUserExist } as TRequestUser;
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -328,19 +332,31 @@ const UserMiddlewares = {
     next: NextFunction
   ) => {
     try {
-      const { _id } = (req.user as TRequestUser)?.user as IUser;
+      const { user, provider } = req.user as TRequestUser;
+      const { _id } = user;
       const sessions = await redisClient.smembers(`user:${_id}:sessions`);
       if (sessions.length === 3) {
-        const { rememberMe } = req.body;
-        const token = generateClearDevicePageToken({
-          sub: _id as string,
-          rememberMe,
-        });
+        let token;
+        if (provider === AuthType.GOOGLE) {
+          token = generateClearDevicePageToken({
+            sub: _id as string,
+            provider,
+          });
+        } else {
+          const rememberMe = req.body?.rememberMe;
+          token = generateClearDevicePageToken({
+            sub: _id as string,
+            rememberMe,
+          });
+        }
         res.cookie(
           '__clear_device',
           token,
           cookieOption(clearDevicePageTokenExpireIn)
         );
+        if (provider === AuthType.GOOGLE) {
+          res.redirect(`${env.CLIENT_BASE_URL}/auth/clear-session`);
+        }
         res.status(429).json({ success: false, message: 'Login limit exceed' });
         return;
       }

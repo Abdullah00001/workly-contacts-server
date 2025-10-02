@@ -117,7 +117,7 @@ router.route('/google/callback').get(
   passport.authenticate('google', {
     failureRedirect: `${CLIENT_BASE_URL}/login?error=user_not_found`,
     session: false,
-  }),
+  }),checkSessionsLimit,
   handleProcessOAuthCallback
 );
 

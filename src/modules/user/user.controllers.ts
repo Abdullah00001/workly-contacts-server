@@ -221,7 +221,7 @@ const UserControllers = {
     next: NextFunction
   ) => {
     try {
-      const { sub, rememberMe } = req.decoded;
+      const { sub, rememberMe, provider } = req.decoded;
       const { devices } = req.body;
       const { browser, device, location, os, ip } =
         await getClientMetaData(req);
@@ -232,9 +232,14 @@ const UserControllers = {
         location: `${location.city} ${location.country}`,
         os: os.name as string,
         user: sub as string,
-        rememberMe: rememberMe as boolean,
+        rememberMe,
         devices: devices,
+        provider,
       });
+      const refreshTokenCookieExpiresIn =
+        rememberMe || provider === AuthType.GOOGLE
+          ? refreshTokenExpiresIn
+          : refreshTokenExpiresInWithoutRememberMe;
       res.clearCookie(
         '__clear_device',
         cookieOption(clearDevicePageTokenExpireIn)
@@ -247,11 +252,7 @@ const UserControllers = {
       res.cookie(
         'refreshtoken',
         refreshToken,
-        cookieOption(
-          rememberMe
-            ? refreshTokenExpiresIn
-            : refreshTokenExpiresInWithoutRememberMe
-        )
+        cookieOption(refreshTokenCookieExpiresIn)
       );
       res.status(200).json({
         status: 'success',

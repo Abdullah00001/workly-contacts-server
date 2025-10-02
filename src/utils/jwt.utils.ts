@@ -10,6 +10,7 @@ import {
   refreshTokenExpiresIn,
   refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
+import { AuthType } from '@/modules/user/user.enums';
 
 const JwtUtils = {
   generateAccessToken: (payload: TokenPayload | null): string => {
@@ -24,8 +25,8 @@ const JwtUtils = {
     if (!payload) {
       throw new Error('Generate RefreshToken Payload Cant Be Null');
     }
-    const { rememberMe, sub, sid } = payload;
-    if (rememberMe) {
+    const { rememberMe, sub, sid, provider } = payload;
+    if (rememberMe || provider === AuthType.GOOGLE) {
       return jwt.sign({ sub, sid }, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
         expiresIn: refreshTokenExpiresIn,
       });

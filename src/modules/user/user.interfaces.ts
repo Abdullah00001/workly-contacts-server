@@ -323,7 +323,8 @@ export type TProcessClearDeviceAndLoginPayload = {
   location: string;
   ipAddress: string;
   devices: string[];
-  rememberMe:boolean
+  rememberMe?: boolean;
+   provider?: AuthType;
 };
 
 export default IUser;
