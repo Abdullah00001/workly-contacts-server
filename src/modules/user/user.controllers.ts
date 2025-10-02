@@ -202,7 +202,7 @@ const UserControllers = {
     try {
       const { sub } = req.decoded;
       const sessions = await processRetrieveSessionsForClearDevice({
-        userId: sub,
+        userId: sub as string,
       });
       res.status(200).json({
         success: true,

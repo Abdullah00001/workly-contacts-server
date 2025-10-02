@@ -380,7 +380,7 @@ const UserMiddlewares = {
           .json({ success: false, message: 'Token expired or invalid' });
         return;
       }
-      req.user = decoded.sub as string;
+      req.decoded = decoded as TokenPayload;
       next();
     } catch (error) {
       if (error instanceof Error) {
@@ -558,7 +558,7 @@ const UserMiddlewares = {
         await redisClient.srem(`user:${sub}:sessions`, sid as string);
         res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
         res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
-        res.status(401).json({
+        res.status(440).json({
           success: false,
           message: 'Unauthorize Request',
           error: 'Session has been expired,Login Required!',
