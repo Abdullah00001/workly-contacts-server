@@ -855,7 +855,7 @@ const UserMiddlewares = {
     res: Response,
     next: NextFunction
   ) => {
-    const { sub } = req?.decoded;
+    const { sub } = req.decoded;
     const ttlKey = `otp:resendOtpEmailCoolDown:${sub}`;
     const countKey = `otp:resendOtpEmailCoolDown:${sub}:count`;
     try {

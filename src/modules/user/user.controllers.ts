@@ -147,7 +147,7 @@ const UserControllers = {
   handleResend: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const availableAt = req.availableAt;
-      const { sub } = req?.decoded;
+      const { sub } = req.decoded;
       await processResend(sub);
       res.status(200).json({
         success: true,
