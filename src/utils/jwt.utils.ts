@@ -3,9 +3,14 @@ import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import { env } from '@/env';
 import {
   accessTokenExpiresIn,
+  activationTokenExpiresIn,
+  changePasswordPageTokenExpiresIn,
+  clearDevicePageTokenExpireIn,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
+  refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
+import { AuthType } from '@/modules/user/user.enums';
 
 const JwtUtils = {
   generateAccessToken: (payload: TokenPayload | null): string => {
@@ -20,9 +25,16 @@ const JwtUtils = {
     if (!payload) {
       throw new Error('Generate RefreshToken Payload Cant Be Null');
     }
-    return jwt.sign(payload, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
-      expiresIn: refreshTokenExpiresIn,
-    });
+    const { rememberMe, sub, sid, provider } = payload;
+    if (rememberMe || provider === AuthType.GOOGLE) {
+      return jwt.sign({ sub, sid }, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
+        expiresIn: refreshTokenExpiresIn,
+      });
+    } else {
+      return jwt.sign({ sub, sid }, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
+        expiresIn: refreshTokenExpiresInWithoutRememberMe,
+      });
+    }
   },
   generateRecoverToken: (payload: TokenPayload | null): string => {
     if (!payload) {
@@ -31,6 +43,52 @@ const JwtUtils = {
     return jwt.sign(payload, env.JWT_RECOVER_SESSION_TOKEN_SECRET_KEY, {
       expiresIn: recoverSessionExpiresIn,
     });
+  },
+  generateActivationToken: (payload: TokenPayload | null): string => {
+    if (!payload) {
+      throw new Error('Generate Activation Payload Cant Be Null');
+    }
+    return jwt.sign(payload, env.JWT_ACTIVATION_TOKEN_SECRET_KEY, {
+      expiresIn: activationTokenExpiresIn,
+    });
+  },
+  generateChangePasswordPageToken: (payload: TokenPayload | null): string => {
+    if (!payload) {
+      throw new Error(
+        'Generate Change Password Page Token Payload Cant Be Null'
+      );
+    }
+    return jwt.sign(payload, env.JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY, {
+      expiresIn: changePasswordPageTokenExpiresIn,
+    });
+  },
+  generateClearDevicePageToken: (payload: TokenPayload | null): string => {
+    if (!payload) {
+      throw new Error(
+        'Generate Change Password Page Token Payload Cant Be Null'
+      );
+    }
+    return jwt.sign(payload, env.JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY, {
+      expiresIn: clearDevicePageTokenExpireIn,
+    });
+  },
+  verifyClearDevicePageToken: (token: string | null): JwtPayload => {
+    if (!token) {
+      throw new Error('Clear Device Page Token Is Missing');
+    }
+    return jwt.verify(
+      token,
+      env.JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY
+    ) as JwtPayload;
+  },
+  verifyChangePasswordPageToken: (token: string | null): JwtPayload => {
+    if (!token) {
+      throw new Error('Change Password Page Token Is Missing');
+    }
+    return jwt.verify(
+      token,
+      env.JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY
+    ) as JwtPayload;
   },
   verifyAccessToken: (token: string | null): JwtPayload => {
     if (!token) {
@@ -53,6 +111,12 @@ const JwtUtils = {
       token,
       env.JWT_RECOVER_SESSION_TOKEN_SECRET_KEY
     ) as JwtPayload;
+  },
+  verifyActivationToken: (token: string): JwtPayload | null => {
+    if (!token) {
+      throw new Error('Activation Token Is Missing');
+    }
+    return jwt.verify(token, env.JWT_ACTIVATION_TOKEN_SECRET_KEY) as JwtPayload;
   },
 };
 

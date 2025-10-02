@@ -16,4 +16,10 @@ export default interface IEnvConfig {
   GOOGLE_CLIENT_ID: string;
   CALLBACK_URL: string;
   CLIENT_BASE_URL: string;
+  OTP_HASH_SECRET: string;
+  JWT_ACTIVATION_TOKEN_SECRET_KEY: string;
+  RECAPTCHA_SECRET_KEY: string;
+  SERVER_BASE_URL: string;
+  JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY: string;
+  JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY: string;
 }

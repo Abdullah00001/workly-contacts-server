@@ -1,5 +1,10 @@
 import { IImage } from '@/modules/contacts/contacts.interfaces';
-import { ActivityType, AuthType } from '@/modules/user/user.enums';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+  DeviceType,
+} from '@/modules/user/user.enums';
 import { Document, Types } from 'mongoose';
 
 export interface IPassword {
@@ -11,16 +16,29 @@ export type TPassword = {
   secret: string | null;
   change_at: string | null;
 };
+
+export type TAccountStatus = {
+  accountStatus: AccountStatus;
+  lockedAt: string | null;
+};
+
 interface IUser extends Document {
   name: string;
   email: string;
   phone: string;
   password: IPassword;
   isVerified: boolean;
+  accountStatus: TAccountStatus;
   avatar: IImage;
   provider: AuthType;
   googleId: string;
 }
+
+export type TUpdateUserAccountStatus = {
+  accountStatus: AccountStatus;
+  lockedAt?: string;
+  userId: Types.ObjectId;
+};
 
 export interface IActivity extends Document {
   activityType: ActivityType;
@@ -80,6 +98,32 @@ export interface IGeoLocation {
   proxy: boolean;
   hosting: boolean;
 }
+
+export type TGeoLocation = {
+  query?: string;
+  status?: 'success' | 'fail';
+  continent?: string;
+  continentCode?: string;
+  country?: string;
+  countryCode?: string;
+  region?: string;
+  regionName?: string;
+  city?: string;
+  district?: string;
+  zip?: string;
+  lat?: number;
+  lon?: number;
+  timezone?: string;
+  offset?: number;
+  currency?: string;
+  isp?: string;
+  org?: string;
+  as?: string;
+  asname?: string;
+  mobile?: boolean;
+  proxy?: boolean;
+  hosting?: boolean;
+};
 
 export interface IGetClientMetaData {
   browser: UAParser.IBrowser;
@@ -163,5 +207,124 @@ export interface IPasswordResetNotificationTemplateData {
   resetDateTime: string;
   name: string;
 }
+
+export type TSession = {
+  sessionId: string;
+  createdAt: string;
+  expiredAt: string;
+  lastUsedAt: string;
+  userId: string;
+  deviceType: string;
+  browser: string;
+  os: string;
+  location: string;
+};
+
+export type TProcessVerifyUserArgs = {
+  userId: string;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+};
+
+export type TSignupSuccessEmailPayloadData = {
+  email: string;
+  name: string;
+};
+
+export type TProcessOAuthCallBackPayload = {
+  user: IUser;
+  activity: ActivityType;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+};
+
+export type TProcessLoginPayload = {
+  user: IUser;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+  rememberMe: boolean;
+};
+
+export type TLoginSuccessEmailPayload = {
+  email: string;
+  name: string;
+  time: string;
+  ip: string;
+  location: string;
+  device: string;
+  browser: string;
+  os: string;
+};
+
+export type TAccountLockedEmailPayload = {
+  name: string;
+  time: string;
+  activeLink: string;
+  email: string;
+};
+
+export interface TAccountUnlockedEmailPayload {
+  name: string;
+  time: string;
+  email: string;
+}
+
+export type TProcessChangePasswordAndAccountActivation = {
+  token: string;
+  userId: string;
+  uuid: string;
+  password: string;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+};
+
+export type TChangePasswordAndAccountActivation = {
+  password: string;
+  userId: Types.ObjectId;
+};
+
+export type TProcessRefreshToken = {
+  sid: string;
+  userId: string;
+};
+
+export type TProcessLogout = {
+  sid: string;
+  userId: string;
+  accessToken: string;
+  refreshToken?: string;
+};
+
+export type TProcessCheckResendStatus = {
+  userId: string;
+};
+
+export type TProcessRetrieveSessionsForClearDevice = {
+  userId: string;
+};
+
+export type TProcessClearDeviceAndLoginPayload = {
+  user: string;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+  devices: string[];
+  rememberMe?: boolean;
+  provider?: AuthType;
+};
 
 export default IUser;

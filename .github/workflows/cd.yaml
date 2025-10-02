@@ -25,7 +25,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            abdullah00001/amar-contacts:${{github.ref_name}}
-            abdullah00001/amar-contacts:latest
+            abdullah00001/workly-contacts:${{github.ref_name}}
+            abdullah00001/workly-contacts:latest
       - name: Deploy to Render
         run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}

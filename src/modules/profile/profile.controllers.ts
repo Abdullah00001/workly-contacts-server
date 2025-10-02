@@ -4,6 +4,7 @@ import { IProfilePayload } from '@/modules/profile/profile.interfaces';
 import ProfileServices from '@/modules/profile/profile.services';
 import CookieUtils from '@/utils/cookie.utils';
 import { NextFunction, Request, Response } from 'express';
+import mongoose from 'mongoose';
 
 const {
   processGetProfile,
@@ -41,17 +42,17 @@ const ProfileControllers = {
   },
   handleGetProfile: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const user = new mongoose.Types.ObjectId(sub);
       const queryString = req.query.fields as string;
       if (queryString && queryString?.length > 0) {
         const queryFieldList = queryString.split(',');
-        const { userId } = req.decoded;
-        const data = await processGetProfile({ user: userId, queryFieldList });
+        const data = await processGetProfile({ user, queryFieldList });
         res
           .status(200)
           .json({ status: 'success', message: 'get profile successful', data });
       } else {
-        const data = await processGetProfile({ user: userId });
+        const data = await processGetProfile({ user });
         res
           .status(200)
           .json({ status: 'success', message: 'get profile successful', data });
@@ -70,10 +71,11 @@ const ProfileControllers = {
   ) => {
     try {
       const { password } = req.body;
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const user = new mongoose.Types.ObjectId(sub);
       await processChangePassword({
         password: { secret: password, change_at: new Date().toISOString() },
-        user: userId,
+        user,
       });
       res
         .status(200)
@@ -90,9 +92,10 @@ const ProfileControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { userId } = req.decoded;
+    const { sub } = req.decoded;
+    const user = new mongoose.Types.ObjectId(sub);
     try {
-      await processDeleteAccount({ user: userId });
+      await processDeleteAccount({ user });
       res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
       res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
       res
@@ -110,10 +113,11 @@ const ProfileControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { userId } = req.decoded;
+    const { sub } = req.decoded;
+    const user = new mongoose.Types.ObjectId(sub);
     const fileName = req.file?.filename as string;
     try {
-      const data = await processAvatarUpload({ fileName, user: userId });
+      const data = await processAvatarUpload({ fileName, user });
       res.status(200).json({ success: true, message: 'Avatar uploaded', data });
       return;
     } catch (error) {
@@ -127,7 +131,8 @@ const ProfileControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { userId } = req.decoded;
+    const { sub } = req.decoded;
+    const user = new mongoose.Types.ObjectId(sub);
     const { folder, public_id } = req.params;
     if (!public_id && !folder) {
       res.status(400).json({
@@ -138,7 +143,7 @@ const ProfileControllers = {
     }
     const publicId = `${folder}/${public_id}`;
     try {
-      await processAvatarRemove({ publicId, user: userId });
+      await processAvatarRemove({ publicId, user });
       res.status(204).end();
       return;
     } catch (error) {
@@ -152,13 +157,14 @@ const ProfileControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { userId } = req.decoded;
+    const { sub } = req.decoded;
+    const user = new mongoose.Types.ObjectId(sub);
     const fileName = req.file?.filename as string;
     const { publicId } = req.body;
     try {
       const data = await processAvatarChange({
         fileName,
-        user: userId,
+        user,
         publicId,
       });
       res.status(200).json({ success: true, message: 'Avatar changed', data });

@@ -1,39 +1,86 @@
 import UserRepositories from '@/modules/user/user.repositories';
 import IUser, {
+  IActivityPayload,
   IProcessFindUserReturn,
   IProcessRecoverAccountPayload,
   IResetPasswordServicePayload,
   IResetPasswordServiceReturnPayload,
   IUserPayload,
+  TAccountUnlockedEmailPayload,
+  TLoginSuccessEmailPayload,
+  TProcessChangePasswordAndAccountActivation,
+  TProcessLoginPayload,
+  TProcessOAuthCallBackPayload,
+  TProcessVerifyUserArgs,
+  TSession,
+  TSignupSuccessEmailPayloadData,
+  TProcessRefreshToken,
+  TProcessLogout,
+  TProcessCheckResendStatus,
+  TProcessRetrieveSessionsForClearDevice,
+  TProcessClearDeviceAndLoginPayload,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
 import {
   accessTokenExpiresIn,
+  AccountActivityMap,
+  maxOtpResendPerHour,
   otpExpireAt,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
+  refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
 import JwtUtils from '@/utils/jwt.utils';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { IRefreshTokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
 import EmailQueueJobs from '@/queue/jobs/email.jobs';
+import { OtpUtilsSingleton } from '@/singletons';
+import { v4 as uuidv4 } from 'uuid';
+import DateUtils from '@/utils/date.utils';
+import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+} from '@/modules/user/user.enums';
+import { TRequestUser } from '@/types/express';
 
 const { hashPassword } = PasswordUtils;
 const {
   addSendAccountVerificationOtpEmailToQueue,
   addSendPasswordResetNotificationEmailToQueue,
   addSendAccountRecoverOtpEmailToQueue,
+  addSendSignupSuccessNotificationEmailToQueue,
+  addLoginSuccessNotificationEmailToQueue,
+  addAccountUnlockNotificationToQueue,
 } = EmailQueueJobs;
-
-const { createNewUser, verifyUser, findUserByEmail, resetPassword } =
-  UserRepositories;
+const {
+  signupSuccessActivitySavedInDb,
+  loginSuccessActivitySavedInDb,
+  accountUnlockActivitySavedInDb,
+} = ActivityQueueJobs;
+const {
+  createNewUser,
+  verifyUser,
+  findUserByEmail,
+  resetPassword,
+  findUserById,
+  updateUserAccountStatus,
+  changePasswordAndAccountActivation,
+} = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
-
-const { generateAccessToken, generateRefreshToken, generateRecoverToken } =
-  JwtUtils;
+const { calculateFutureDate, formatDateTime } = DateUtils;
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  generateRecoverToken,
+  generateActivationToken,
+  generateChangePasswordPageToken,
+} = JwtUtils;
+const otpUtils = OtpUtilsSingleton();
 
 const UserServices = {
   processSignup: async (payload: IUserPayload) => {
@@ -45,10 +92,14 @@ const UserServices = {
         specialChars: false,
         upperCaseAlphabets: false,
       });
+      const activationToken = generateActivationToken({
+        sub: createdUser?._id as string,
+      });
+      const hashOtp = otpUtils.hashOtp({ otp });
       await Promise.all([
         redisClient.set(
           `user:otp:${createdUser?._id}`,
-          otp,
+          hashOtp,
           'PX',
           calculateMilliseconds(otpExpireAt, 'minute')
         ),
@@ -59,7 +110,7 @@ const UserServices = {
           otp,
         }),
       ]);
-      return createdUser;
+      return { createdUser, activationToken };
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -68,51 +119,70 @@ const UserServices = {
       }
     }
   },
-  processTokens: async (
-    payload: IRefreshTokenPayload
-  ): Promise<IUserPayload> => {
-    const { email, refreshToken } = payload;
-    const user = await findUserByEmail(email);
-    const newAccessToken = generateAccessToken({
-      email: user?.email as string,
-      isVerified: user?.isVerified as boolean,
-      userId: user?._id as Types.ObjectId,
-      name: user?.name as string,
-    }) as string;
-
-    const newRefreshToken = generateRefreshToken({
-      email: user?.email as string,
-      isVerified: user?.isVerified as boolean,
-      userId: user?._id as Types.ObjectId,
-      name: user?.name as string,
-    }) as string;
-    await redisClient.set(
-      `blacklist:refreshToken:${user?._id}`,
-      refreshToken,
-      'PX',
-      expiresInTimeUnitToMs(refreshTokenExpiresIn)
-    );
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
-  },
   processVerifyUser: async ({
-    email,
     userId,
-  }: IUserPayload): Promise<IUserPayload> => {
+    browser,
+    deviceType,
+    location,
+    os,
+    ipAddress,
+  }: TProcessVerifyUserArgs): Promise<IUserPayload> => {
     try {
-      const user = await verifyUser({ email });
-      await redisClient.del(`user:recover:otp:${userId}`);
+      const user = await verifyUser({
+        userId: new mongoose.Types.ObjectId(userId),
+      });
+      const sid = uuidv4();
       const accessToken = generateAccessToken({
-        email: user?.email as string,
-        isVerified: user?.isVerified as boolean,
-        userId: user?._id as Types.ObjectId,
-        name: user?.name as string,
+        sid,
+        sub: user?._id as string,
       });
       const refreshToken = generateRefreshToken({
-        email: user?.email as string,
-        isVerified: user?.isVerified as boolean,
-        userId: user?._id as Types.ObjectId,
-        name: user?.name as string,
+        sid,
+        sub: user?._id as string,
       });
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: user?._id as string,
+        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        lastUsedAt: new Date().toISOString(),
+      };
+      const emailPayload: TSignupSuccessEmailPayloadData = {
+        name: user?.name as string,
+        email: user?.email as string,
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.SIGNUP_SUCCESS,
+        title: AccountActivityMap.SIGNUP_SUCCESS.title,
+        description: AccountActivityMap.SIGNUP_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: user?._id as Types.ObjectId,
+      };
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `user:${user?._id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.sadd(`user:${user?._id}:sessions`, sid);
+      redisPipeLine.del(`user:otp:${userId}`);
+      redisPipeLine.del(`otp:limit:${userId}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${userId}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${userId}:count`);
+      await Promise.all([
+        redisPipeLine.exec(),
+        signupSuccessActivitySavedInDb(activityPayload),
+        addSendSignupSuccessNotificationEmailToQueue(emailPayload),
+      ]);
       return { accessToken: accessToken!, refreshToken: refreshToken! };
     } catch (error) {
       if (error instanceof Error) {
@@ -122,18 +192,20 @@ const UserServices = {
       }
     }
   },
-  processResend: async ({ email, name, _id }: IUser) => {
+  processResend: async (sub: string) => {
     try {
+      const { email, name, _id } = await findUserById(sub);
       const otp = generate(6, {
         digits: true,
         lowerCaseAlphabets: false,
         specialChars: false,
         upperCaseAlphabets: false,
       });
+      const hashOtp = otpUtils.hashOtp({ otp });
       await Promise.all([
         redisClient.set(
           `user:otp:${_id}`,
-          otp,
+          hashOtp,
           'PX',
           calculateMilliseconds(otpExpireAt, 'minute')
         ),
@@ -154,44 +226,310 @@ const UserServices = {
       }
     }
   },
-  processLogin: (payload: IUser): IUserPayload => {
-    const { email, isVerified, id, name } = payload;
-    const accessToken = generateAccessToken({
-      email,
-      isVerified,
-      userId: id,
-      name,
-    });
-    const refreshToken = generateRefreshToken({
-      email,
-      isVerified,
-      userId: id,
-      name,
-    });
-
-    return {
-      accessToken: accessToken!,
-      refreshToken: refreshToken!,
-    };
-  },
-  processLogout: async ({
-    accessToken,
-    refreshToken,
-    userId,
-  }: IUserPayload) => {
+  processCheckResendStatus: async ({ userId }: TProcessCheckResendStatus) => {
+    const ttlKey = `otp:resendOtpEmailCoolDown:${userId}`;
+    const countKey = `otp:resendOtpEmailCoolDown:${userId}:count`;
     try {
+      const currentCoolDownCount = Number(await redisClient.get(countKey));
+      if (currentCoolDownCount >= maxOtpResendPerHour) {
+        const countTtl = await redisClient.pttl(countKey);
+        if (countTtl > 0) return { availableAt: Date.now() + countTtl };
+      }
+      const countTtl = await redisClient.pttl(ttlKey);
+      if (countTtl > 0) return { availableAt: Date.now() + countTtl };
+      return { availableAt: Date.now() };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Check Resend Status Service'
+        );
+      }
+    }
+  },
+  processRefreshToken: async (payload: TProcessRefreshToken) => {
+    try {
+      const { sid, userId } = payload;
+      const accessToken = generateAccessToken({
+        sid,
+        sub: userId as string,
+      });
+      const session = await redisClient.get(`user:${userId}:sessions:${sid}`);
+      const parsedSession: TSession = JSON.parse(session as string);
+      const updatedSession: TSession = {
+        ...parsedSession,
+        lastUsedAt: new Date().toISOString(),
+      };
       await redisClient.set(
-        `blacklist:refreshToken:${userId}`,
-        refreshToken!,
+        `user:${userId}:sessions:${sid}`,
+        JSON.stringify(updatedSession),
+        'KEEPTTL'
+      );
+      return { accessToken };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Refresh Token Service'
+        );
+      }
+    }
+  },
+  processRetrieveSessionsForClearDevice: async ({
+    userId,
+  }: TProcessRetrieveSessionsForClearDevice): Promise<TSession[]> => {
+    try {
+      const sessionIds = await redisClient.smembers(`user:${userId}:sessions`);
+      const sessions: TSession[] = await Promise.all(
+        sessionIds.map(async (sid) => {
+          const session: string = (await redisClient.get(
+            `user:${userId}:sessions:${sid}`
+          )) as string;
+          return JSON.parse(session) as TSession;
+        })
+      );
+      return sessions;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Retrieve Sessions For Clear Device Service'
+        );
+      }
+    }
+  },
+  processClearDeviceAndLogin: async ({
+    browser,
+    deviceType,
+    devices,
+    ipAddress,
+    location,
+    os,
+    rememberMe,
+    user,
+    provider,
+  }: TProcessClearDeviceAndLoginPayload) => {
+    try {
+      const { email, name, _id } = await findUserById(user);
+      const sid = uuidv4();
+      const accessToken = generateAccessToken({
+        sid,
+        sub: _id as string,
+      });
+      const refreshToken = generateRefreshToken({
+        sid,
+        sub: _id as string,
+        rememberMe,
+        provider,
+      });
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: _id as string,
+        expiredAt:
+          rememberMe || provider === AuthType.GOOGLE
+            ? calculateFutureDate(refreshTokenExpiresIn)
+            : calculateFutureDate(refreshTokenExpiresInWithoutRememberMe),
+        lastUsedAt: new Date().toISOString(),
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.LOGIN_SUCCESS,
+        title: AccountActivityMap.LOGIN_SUCCESS.title,
+        description: AccountActivityMap.LOGIN_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: _id as Types.ObjectId,
+      };
+      const emailPayload: TLoginSuccessEmailPayload = {
+        browser,
+        device: deviceType,
+        email,
+        ip: ipAddress,
+        location,
+        name,
+        os,
+        time: formatDateTime(new Date().toISOString()),
+      };
+      const redisPipeLine = redisClient.pipeline();
+      devices.forEach((sid) => {
+        redisPipeLine.set(
+          `blacklist:sessions:${sid}`,
+          sid,
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+        redisPipeLine.srem(`user:${_id}:sessions`, sid as string);
+        redisPipeLine.del(`user:${_id}:sessions:${sid}`);
+      });
+      const sessionExpireIn =
+        rememberMe || provider === AuthType.GOOGLE
+          ? refreshTokenExpiresIn
+          : refreshTokenExpiresInWithoutRememberMe;
+      redisPipeLine.set(
+        `user:${_id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(sessionExpireIn)
+      );
+      redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+      await Promise.all([
+        redisPipeLine.exec(),
+        loginSuccessActivitySavedInDb(activityPayload),
+        addLoginSuccessNotificationEmailToQueue(emailPayload),
+      ]);
+      return {
+        accessToken: accessToken!,
+        refreshToken: refreshToken!,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Clear Device And Login Service'
+        );
+      }
+    }
+  },
+  processLogin: async ({
+    user,
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+    rememberMe,
+  }: TProcessLoginPayload): Promise<IUserPayload> => {
+    try {
+      const { _id, name, email } = user;
+      const sid = uuidv4();
+      const accessToken = generateAccessToken({
+        sid,
+        sub: _id as string,
+      });
+      const refreshToken = generateRefreshToken({
+        sid,
+        sub: _id as string,
+        rememberMe,
+      });
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: _id as string,
+        expiredAt: rememberMe
+          ? calculateFutureDate(refreshTokenExpiresIn)
+          : calculateFutureDate(refreshTokenExpiresInWithoutRememberMe),
+        lastUsedAt: new Date().toISOString(),
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.LOGIN_SUCCESS,
+        title: AccountActivityMap.LOGIN_SUCCESS.title,
+        description: AccountActivityMap.LOGIN_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: _id as Types.ObjectId,
+      };
+      const emailPayload: TLoginSuccessEmailPayload = {
+        browser,
+        device: deviceType,
+        email,
+        ip: ipAddress,
+        location,
+        name,
+        os,
+        time: formatDateTime(new Date().toISOString()),
+      };
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `user:${_id}:sessions:${sid}`,
+        JSON.stringify(session),
         'PX',
         expiresInTimeUnitToMs(refreshTokenExpiresIn)
       );
-      await redisClient.set(
-        `blacklist:accessToken:${userId}`,
+      redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+      await Promise.all([
+        redisPipeLine.exec(),
+        loginSuccessActivitySavedInDb(activityPayload),
+        addLoginSuccessNotificationEmailToQueue(emailPayload),
+      ]);
+      return {
+        accessToken: accessToken!,
+        refreshToken: refreshToken!,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Process Login Service');
+      }
+    }
+  },
+  /**
+   * Service to handle user logout by revoking tokens and cleaning up sessions.
+   *
+   * Responsibilities:
+   * - Blacklists the provided refresh token with its TTL.
+   * - Blacklists the provided access token with its TTL.
+   * - Marks the session ID (`sid`) as blacklisted with the refresh token TTL.
+   * - Removes the session ID from the user's active session set.
+   * - Deletes the specific session record from Redis.
+   *
+   * @param params - Object containing logout details
+   * @param params.accessToken - The access token to revoke
+   * @param params.refreshToken - The refresh token to revoke
+   * @param params.sid - Session ID to blacklist and remove
+   * @param params.userId - The user ID associated with the session
+   * @throws Will throw an error if Redis operations fail
+   */
+
+  processLogout: async ({
+    accessToken,
+    refreshToken,
+    sid,
+    userId,
+  }: TProcessLogout) => {
+    try {
+      const pipeline = redisClient.pipeline();
+      if (refreshToken) {
+        pipeline.set(
+          `blacklist:jwt:${refreshToken}`,
+          refreshToken!,
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+      }
+      pipeline.set(
+        `blacklist:jwt:${accessToken}`,
         accessToken!,
         'PX',
         expiresInTimeUnitToMs(accessTokenExpiresIn)
       );
+      pipeline.set(
+        `blacklist:sessions:${sid}`,
+        sid,
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      pipeline.srem(`user:${userId}:sessions`, sid as string);
+      pipeline.del(`user:${userId}:sessions:${sid}`);
+      await pipeline.exec();
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -200,220 +538,306 @@ const UserServices = {
       }
     }
   },
-  processFindUser: ({
-    _id,
-    email,
-    isVerified,
-    name,
-    avatar,
-  }: IUser): IProcessFindUserReturn => {
-    try {
-      const r_stp1 = generateRecoverToken({
-        userId: _id as Types.ObjectId,
-        email,
-        isVerified,
-        name,
-        avatar,
-      });
-      return { r_stp1: r_stp1 as string };
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      } else {
-        throw new Error('Unknown Error Occurred In Process Find User Service');
-      }
-    }
-  },
-  processSentRecoverAccountOtp: async ({
-    email,
-    name,
-    isVerified,
-    userId,
-    avatar,
-    r_stp1,
-  }: IProcessRecoverAccountPayload): Promise<IProcessFindUserReturn> => {
-    try {
-      const otp = generate(6, {
-        digits: true,
-        lowerCaseAlphabets: false,
-        specialChars: false,
-        upperCaseAlphabets: false,
-      });
-      await Promise.all([
-        await redisClient.set(
-          `blacklist:recover:r_stp1:${userId}`,
-          r_stp1!,
-          'PX',
-          expiresInTimeUnitToMs(recoverSessionExpiresIn)
-        ),
-        redisClient.set(
-          `user:recover:otp:${userId}`,
-          otp,
-          'PX',
-          calculateMilliseconds(otpExpireAt, 'minute')
-        ),
-        addSendAccountRecoverOtpEmailToQueue({
-          email,
-          expirationTime: otpExpireAt,
-          name,
-          otp,
-        }),
-      ]);
-      const r_stp2 = generateRecoverToken({
-        userId,
-        email,
-        isVerified: isVerified!,
-        name,
-        avatar,
-      });
-      return { r_stp2: r_stp2 as string };
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      } else {
-        throw new Error('Unknown Error Occurred In Process Find User Service');
-      }
-    }
-  },
-  processVerifyOtp: async ({
-    email,
-    isVerified,
-    name,
-    r_stp2,
-    userId,
-    avatar,
-  }: IProcessRecoverAccountPayload): Promise<IProcessFindUserReturn> => {
-    try {
-      await redisClient.del(`user:recover:otp:${userId}`);
-      await redisClient.set(
-        `blacklist:recover:r_stp2:${userId}`,
-        r_stp2!,
-        'PX',
-        expiresInTimeUnitToMs(recoverSessionExpiresIn)
-      );
-      const r_stp3 = generateRecoverToken({
-        userId,
-        email,
-        isVerified: isVerified!,
-        name,
-        avatar,
-      });
-      return { r_stp3: r_stp3 as string };
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      } else {
-        throw new Error('Unknown Error Occurred In Process Verify Otp Service');
-      }
-    }
-  },
-  processReSentRecoverAccountOtp: async ({
-    email,
-    name,
-    userId,
-  }: IProcessRecoverAccountPayload) => {
-    try {
-      const otp = generate(6, {
-        digits: true,
-        lowerCaseAlphabets: false,
-        specialChars: false,
-        upperCaseAlphabets: false,
-      });
-      await Promise.all([
-        addSendAccountRecoverOtpEmailToQueue({
-          email,
-          expirationTime: otpExpireAt,
-          name,
-          otp,
-        }),
-        redisClient.set(
-          `user:recover:otp:${userId}`,
-          otp,
-          'PX',
-          calculateMilliseconds(otpExpireAt, 'minute')
-        ),
-      ]);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      } else {
-        throw new Error('Unknown Error Occurred In Process Find User Service');
-      }
-    }
-  },
-  processResetPassword: async ({
-    device,
-    email,
+  // processFindUser: ({
+  //   _id,
+  //   email,
+  //   isVerified,
+  //   name,
+  //   avatar,
+  // }: IUser): IProcessFindUserReturn => {
+  //   try {
+  //     const r_stp1 = generateRecoverToken({
+  //       userId: _id as Types.ObjectId,
+  //       email,
+  //       isVerified,
+  //       name,
+  //       avatar,
+  //     });
+  //     return { r_stp1: r_stp1 as string };
+  //   } catch (error) {
+  //     if (error instanceof Error) {
+  //       throw error;
+  //     } else {
+  //       throw new Error('Unknown Error Occurred In Process Find User Service');
+  //     }
+  //   }
+  // },
+  // processSentRecoverAccountOtp: async ({
+  //   email,
+  //   name,
+  //   isVerified,
+  //   userId,
+  //   avatar,
+  //   r_stp1,
+  // }: IProcessRecoverAccountPayload): Promise<IProcessFindUserReturn> => {
+  //   try {
+  //     const otp = generate(6, {
+  //       digits: true,
+  //       lowerCaseAlphabets: false,
+  //       specialChars: false,
+  //       upperCaseAlphabets: false,
+  //     });
+  //     await Promise.all([
+  //       await redisClient.set(
+  //         `blacklist:recover:r_stp1:${userId}`,
+  //         r_stp1!,
+  //         'PX',
+  //         expiresInTimeUnitToMs(recoverSessionExpiresIn)
+  //       ),
+  //       redisClient.set(
+  //         `user:recover:otp:${userId}`,
+  //         otp,
+  //         'PX',
+  //         calculateMilliseconds(otpExpireAt, 'minute')
+  //       ),
+  //       addSendAccountRecoverOtpEmailToQueue({
+  //         email,
+  //         expirationTime: otpExpireAt,
+  //         name,
+  //         otp,
+  //       }),
+  //     ]);
+  //     const r_stp2 = generateRecoverToken({
+  //       userId,
+  //       email,
+  //       isVerified: isVerified!,
+  //       name,
+  //       avatar,
+  //     });
+  //     return { r_stp2: r_stp2 as string };
+  //   } catch (error) {
+  //     if (error instanceof Error) {
+  //       throw error;
+  //     } else {
+  //       throw new Error('Unknown Error Occurred In Process Find User Service');
+  //     }
+  //   }
+  // },
+  // processVerifyOtp: async ({
+  //   email,
+  //   isVerified,
+  //   name,
+  //   r_stp2,
+  //   userId,
+  //   avatar,
+  // }: IProcessRecoverAccountPayload): Promise<IProcessFindUserReturn> => {
+  //   try {
+  //     await redisClient.del(`user:recover:otp:${userId}`);
+  //     await redisClient.set(
+  //       `blacklist:recover:r_stp2:${userId}`,
+  //       r_stp2!,
+  //       'PX',
+  //       expiresInTimeUnitToMs(recoverSessionExpiresIn)
+  //     );
+  //     const r_stp3 = generateRecoverToken({
+  //       userId,
+  //       email,
+  //       isVerified: isVerified!,
+  //       name,
+  //       avatar,
+  //     });
+  //     return { r_stp3: r_stp3 as string };
+  //   } catch (error) {
+  //     if (error instanceof Error) {
+  //       throw error;
+  //     } else {
+  //       throw new Error('Unknown Error Occurred In Process Verify Otp Service');
+  //     }
+  //   }
+  // },
+  // processReSentRecoverAccountOtp: async ({
+  //   email,
+  //   name,
+  //   userId,
+  // }: IProcessRecoverAccountPayload) => {
+  //   try {
+  //     const otp = generate(6, {
+  //       digits: true,
+  //       lowerCaseAlphabets: false,
+  //       specialChars: false,
+  //       upperCaseAlphabets: false,
+  //     });
+  //     await Promise.all([
+  //       addSendAccountRecoverOtpEmailToQueue({
+  //         email,
+  //         expirationTime: otpExpireAt,
+  //         name,
+  //         otp,
+  //       }),
+  //       redisClient.set(
+  //         `user:recover:otp:${userId}`,
+  //         otp,
+  //         'PX',
+  //         calculateMilliseconds(otpExpireAt, 'minute')
+  //       ),
+  //     ]);
+  //   } catch (error) {
+  //     if (error instanceof Error) {
+  //       throw error;
+  //     } else {
+  //       throw new Error('Unknown Error Occurred In Process Find User Service');
+  //     }
+  //   }
+  // },
+  // processResetPassword: async ({
+  //   device,
+  //   email,
+  //   ipAddress,
+  //   location,
+  //   name,
+  //   r_stp3,
+  //   userId,
+  //   password,
+  //   isVerified,
+  // }: IResetPasswordServicePayload): Promise<IResetPasswordServiceReturnPayload> => {
+  //   try {
+  //     const hashed = (await hashPassword(password.secret)) as string;
+  //     const newAccessToken = generateAccessToken({
+  //       email,
+  //       isVerified,
+  //       userId,
+  //       name,
+  //     }) as string;
+
+  //     const newRefreshToken = generateRefreshToken({
+  //       email,
+  //       isVerified,
+  //       userId,
+  //       name,
+  //     }) as string;
+  //     await Promise.all([
+  //       resetPassword({ userId, password: { ...password, secret: hashed } }),
+  //       redisClient.set(
+  //         `blacklist:recover:r_stp2:${userId}`,
+  //         r_stp3,
+  //         'PX',
+  //         expiresInTimeUnitToMs(recoverSessionExpiresIn)
+  //       ),
+  //       addSendPasswordResetNotificationEmailToQueue({
+  //         device,
+  //         email,
+  //         ipAddress,
+  //         location,
+  //         name,
+  //       }),
+  //     ]);
+  //     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  //   } catch (error) {
+  //     if (error instanceof Error) {
+  //       throw error;
+  //     } else {
+  //       throw new Error(
+  //         'Unknown Error Occurred In Process Reset Password Service'
+  //       );
+  //     }
+  //   }
+  // },
+  processOAuthCallback: async ({
+    user,
+    activity,
+    browser,
+    deviceType,
     ipAddress,
     location,
-    name,
-    r_stp3,
-    userId,
-    password,
-    isVerified,
-  }: IResetPasswordServicePayload): Promise<IResetPasswordServiceReturnPayload> => {
+    os,
+  }: TProcessOAuthCallBackPayload): Promise<IUserPayload> => {
     try {
-      const hashed = (await hashPassword(password.secret)) as string;
-      const newAccessToken = generateAccessToken({
-        email,
-        isVerified,
-        userId,
-        name,
-      }) as string;
-
-      const newRefreshToken = generateRefreshToken({
-        email,
-        isVerified,
-        userId,
-        name,
-      }) as string;
-      await Promise.all([
-        resetPassword({ userId, password: { ...password, secret: hashed } }),
-        redisClient.set(
-          `blacklist:recover:r_stp2:${userId}`,
-          r_stp3,
-          'PX',
-          expiresInTimeUnitToMs(recoverSessionExpiresIn)
-        ),
-        addSendPasswordResetNotificationEmailToQueue({
-          device,
-          email,
-          ipAddress,
-          location,
-          name,
-        }),
-      ]);
-      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      } else {
-        throw new Error(
-          'Unknown Error Occurred In Process Reset Password Service'
-        );
-      }
-    }
-  },
-  processOAuthCallback: ({
-    email,
-    name,
-    isVerified,
-    _id,
-  }: IUser): IUserPayload => {
-    try {
+      const { _id, name, email } = user;
+      const sid = uuidv4();
       const accessToken = generateAccessToken({
-        email,
-        isVerified,
-        userId: _id as Types.ObjectId,
-        name,
+        sid,
+        sub: _id as string,
       });
       const refreshToken = generateRefreshToken({
-        email,
-        isVerified,
-        userId: _id as Types.ObjectId,
-        name,
+        sid,
+        sub: _id as string,
       });
-
+      const session: TSession = {
+        browser,
+        deviceType,
+        location,
+        os,
+        createdAt: new Date().toISOString(),
+        sessionId: sid,
+        userId: _id as string,
+        expiredAt: calculateFutureDate(refreshTokenExpiresIn),
+        lastUsedAt: new Date().toISOString(),
+      };
+      let activityPayload: IActivityPayload;
+      if (activity === ActivityType.SIGNUP_SUCCESS) {
+        activityPayload = {
+          activityType: ActivityType.SIGNUP_SUCCESS,
+          title: AccountActivityMap.SIGNUP_SUCCESS.title,
+          description: AccountActivityMap.SIGNUP_SUCCESS.description,
+          browser,
+          device: deviceType,
+          ipAddress,
+          location,
+          os,
+          user: _id as Types.ObjectId,
+        };
+        const emailPayload: TSignupSuccessEmailPayloadData = {
+          name,
+          email,
+        };
+        const redisPipeLine = redisClient.pipeline();
+        redisPipeLine.set(
+          `user:${_id}:sessions:${sid}`,
+          JSON.stringify(session),
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+        redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+        redisPipeLine.del(`user:otp:${_id}`);
+        redisPipeLine.del(`otp:limit:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}:count`);
+        await Promise.all([
+          redisPipeLine.exec(),
+          signupSuccessActivitySavedInDb(activityPayload),
+          addSendSignupSuccessNotificationEmailToQueue(emailPayload),
+        ]);
+      }
+      if (activity === ActivityType.LOGIN_SUCCESS) {
+        activityPayload = {
+          activityType: ActivityType.LOGIN_SUCCESS,
+          title: AccountActivityMap.LOGIN_SUCCESS.title,
+          description: AccountActivityMap.LOGIN_SUCCESS.description,
+          browser,
+          device: deviceType,
+          ipAddress,
+          location,
+          os,
+          user: _id as Types.ObjectId,
+        };
+        const emailPayload: TLoginSuccessEmailPayload = {
+          browser,
+          device: deviceType,
+          email,
+          ip: ipAddress,
+          location,
+          name,
+          os,
+          time: new Date().toISOString(),
+        };
+        const redisPipeLine = redisClient.pipeline();
+        redisPipeLine.set(
+          `user:${_id}:sessions:${sid}`,
+          JSON.stringify(session),
+          'PX',
+          expiresInTimeUnitToMs(refreshTokenExpiresIn)
+        );
+        redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+        redisPipeLine.del(`user:otp:${_id}`);
+        redisPipeLine.del(`otp:limit:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
+        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}:count`);
+        await Promise.all([
+          redisPipeLine.exec(),
+          loginSuccessActivitySavedInDb(activityPayload),
+          addLoginSuccessNotificationEmailToQueue(emailPayload),
+        ]);
+      }
       return {
         accessToken: accessToken!,
         refreshToken: refreshToken!,
@@ -424,6 +848,77 @@ const UserServices = {
       } else {
         throw new Error(
           'Unknown Error Occurred In Process OAuth Callback Service'
+        );
+      }
+    }
+  },
+  processAccountActivation: (userId: string) => {
+    try {
+      const token = generateChangePasswordPageToken({ sub: userId });
+      return token;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Account Activation Service'
+        );
+      }
+    }
+  },
+  processChangePasswordAndAccountActivation: async ({
+    token,
+    userId,
+    uuid,
+    password,
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+  }: TProcessChangePasswordAndAccountActivation) => {
+    try {
+      const id = new mongoose.Types.ObjectId(userId);
+      const hashSecret = await hashPassword(password);
+      const user = await changePasswordAndAccountActivation({
+        userId: id,
+        password: hashSecret as string,
+      });
+      const pipeline = redisClient.pipeline();
+      pipeline.del(`user:activation:uuid:${uuid}`);
+      pipeline.set(
+        `blacklist:jwt:${token}`,
+        token,
+        'PX',
+        expiresInTimeUnitToMs('15m')
+      );
+      const activityPayload = {
+        activityType: ActivityType.ACCOUNT_ACTIVE,
+        title: AccountActivityMap.ACCOUNT_ACTIVE.title,
+        description: AccountActivityMap.ACCOUNT_ACTIVE.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: user?._id as Types.ObjectId,
+      };
+      const emailPayload: TAccountUnlockedEmailPayload = {
+        email: user?.email as string,
+        name: user?.name as string,
+        time: formatDateTime(new Date().toISOString()),
+      };
+      await Promise.all([
+        pipeline.exec(),
+        addAccountUnlockNotificationToQueue(emailPayload),
+        accountUnlockActivitySavedInDb(activityPayload),
+      ]);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Change Password And Account Activation Service'
         );
       }
     }

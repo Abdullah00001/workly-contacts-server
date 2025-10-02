@@ -1,10 +1,10 @@
-# Amar Contacts
+# Workly Contacts
 
 A modern contact management web application inspired by Google Contacts, built with Node.js, TypeScript, and MongoDB.
 
 ## Description
 
-Amar Contacts is a full-featured contact manager web application that provides a comprehensive RESTful API for managing personal and professional contacts. The application offers secure authentication, profile management, feedback systems, and complete contact lifecycle management with modern web technologies.
+Workly Contacts is a full-featured contact manager web application that provides a comprehensive RESTful API for managing personal and professional contacts. The application offers secure authentication, profile management, feedback systems, and complete contact lifecycle management with modern web technologies.
 
 ## About
 
@@ -79,8 +79,8 @@ A RESTful API for contact manager app that supports authentication, profile mana
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/amar-contacts.git
-   cd amar-contacts
+   git clone https://github.com/yourusername/workly-contacts.git
+   cd workly-contacts
    ```
 
 2. **Install dependencies**
@@ -219,7 +219,7 @@ npm run test -- --coverage
 1. **Build the Docker image**
 
    ```bash
-   docker build -t amar-contacts .
+   docker build -t workly-contacts .
    ```
 
 2. **Run with Docker Compose**
@@ -269,7 +269,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any problems or have questions, please:
 
-1. Check the [Issues](https://github.com/yourusername/amar-contacts/issues) page
+1. Check the [Issues](https://github.com/yourusername/workly-contacts/issues) page
 2. Create a new issue if your problem isn't already reported
 3. Contact the development team
 
@@ -281,4 +281,4 @@ If you encounter any problems or have questions, please:
 
 ---
 
-**Made with ❤️ by the Amar Contacts Team**
+**Made with ❤️ by the Workly Contacts Team**

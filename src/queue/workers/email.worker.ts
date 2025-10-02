@@ -15,10 +15,18 @@ import { accountRecoveryEmailTemplate } from '@/templates/accountRecoveryEmailTe
 import {
   IPasswordResetNotificationTemplateData,
   IResetPasswordSendEmailPayload,
+  TAccountLockedEmailPayload,
+  TAccountUnlockedEmailPayload,
+  TLoginSuccessEmailPayload,
+  TSignupSuccessEmailPayloadData,
 } from '@/modules/user/user.interfaces';
 import { passwordResetNotificationTemplate } from '@/templates/passwordResetNotificationTemplate';
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import failedLoginAttemptEmailTemplate from '@/templates/failedLoginAttemptEmailTemplate';
+import signupSuccessEmailTemplate from '@/templates/signupSuccessEmailTemplate';
+import loginSuccessEmailTemplate from '@/templates/loginSuccessEmailTemplate';
+import { accountLockedEmailTemplate } from '@/templates/accountLockedEmailTemplate';
+import { accountUnlockedEmailTemplate } from '@/templates/accountUnLockedEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 
@@ -46,7 +54,7 @@ const worker = new Worker(
           expirationTime,
           name,
           otp,
-          companyName: 'Amar Contacts',
+          companyName: 'Workly Contacts',
           supportEmail,
           year: new Date().getFullYear(),
         };
@@ -55,7 +63,7 @@ const worker = new Worker(
         await mailTransporter.sendMail(
           mailOption(
             email,
-            'Your Verification Code - Amar Contacts',
+            'Your Verification Code - Workly Contacts',
             personalizedTemplate
           )
         );
@@ -95,6 +103,60 @@ const worker = new Worker(
           mailOption(
             email,
             'Security Alert: Some One Try to Access Your Account',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
+      if (name === 'send-signup-success-notification-email') {
+        const { email, name } = data as TSignupSuccessEmailPayloadData;
+        const templateData = { email, name };
+        const template = Handlebars.compile(signupSuccessEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(email, 'Welcome To Workly Contacts', personalizedTemplate)
+        );
+        return;
+      }
+      if (name === 'send-login-success-notification-email') {
+        const { email, name, browser, device, ip, location, os, time } =
+          data as TLoginSuccessEmailPayload;
+        const templateData = { name, browser, device, ip, location, os, time };
+        const template = Handlebars.compile(loginSuccessEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'New sign-in detected on your workly account',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
+      if (name === 'send-account-lock-notification-email') {
+        const { activeLink, name, time, email } =
+          data as TAccountLockedEmailPayload;
+        const templateData = { activeLink, name, time };
+        const template = Handlebars.compile(accountLockedEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'Action Required: Your workly-contact account has been locked',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
+      if (name === 'send-account-unlock-notification-email') {
+        const { name, time, email } = data as TAccountUnlockedEmailPayload;
+        const templateData = { name, time };
+        const template = Handlebars.compile(accountUnlockedEmailTemplate);
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'Your workly-contact account is now active',
             personalizedTemplate
           )
         );

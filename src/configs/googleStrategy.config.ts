@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import { IImage, TImage } from '@/modules/contacts/contacts.interfaces';
-import { AuthType } from '@/modules/user/user.enums';
+import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { IUserPayload } from '@/modules/user/user.interfaces';
 import UserRepositories from '@/modules/user/user.repositories';
 import passport from 'passport';
@@ -12,6 +12,15 @@ import {
 
 const { CALLBACK_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = env;
 const { findUserByEmail, createNewUser } = UserRepositories;
+
+/**
+ * @strategy GoogleStrategy
+ * @description Handles Google login using passport-google-oauth20.
+ * - Receives Google profile info after user consents.
+ * - Finds existing user by email in DB.
+ * - If not found → creates new user with Google profile data.
+ * - Calls `done(null, user)` which attaches the user to req.user.
+ */
 
 passport.use(
   new GoogleStrategy(
@@ -47,9 +56,16 @@ passport.use(
           googleId,
         };
         const createdUser = await createNewUser(newUser);
-        return done(null, createdUser);
+        return done(null, {
+          user: createdUser,
+          activity: ActivityType.SIGNUP_SUCCESS,
+        }); // attaches to req.user
       }
-      return done(null, user);
+      return done(null, {
+        user,
+        activity: ActivityType.LOGIN_SUCCESS,
+        provider: AuthType.GOOGLE,
+      }); // attaches to req.user
     }
   )
 );

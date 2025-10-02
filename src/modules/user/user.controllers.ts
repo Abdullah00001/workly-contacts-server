@@ -5,32 +5,45 @@ import IUser from '@/modules/user/user.interfaces';
 import CookieUtils from '@/utils/cookie.utils';
 import {
   accessTokenExpiresIn,
+  activationTokenExpiresIn,
+  changePasswordPageTokenExpiresIn,
+  clearDevicePageTokenExpireIn,
   getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
+  refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
-import { AuthType } from '@/modules/user/user.enums';
+import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { env } from '@/env';
 import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
+import { Types } from 'mongoose';
+import { CreateUserResponseDTO } from '@/modules/user/user.dto';
+import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
+import { TRequestUser } from '@/types/express';
 
 const { cookieOption } = CookieUtils;
-const { getRealIP } = ExtractMetaData;
+const { getRealIP, getClientMetaData } = ExtractMetaData;
 const { CLIENT_BASE_URL } = env;
 
 const {
   processSignup,
   processVerifyUser,
   processLogin,
-  processTokens,
+  processRefreshToken,
   processLogout,
   processResend,
-  processFindUser,
-  processSentRecoverAccountOtp,
-  processVerifyOtp,
-  processReSentRecoverAccountOtp,
-  processResetPassword,
+  processCheckResendStatus,
+  // processFindUser,
+  // processSentRecoverAccountOtp,
+  // processVerifyOtp,
+  // processReSentRecoverAccountOtp,
+  // processResetPassword,
   processOAuthCallback,
+  processAccountActivation,
+  processChangePasswordAndAccountActivation,
+  processRetrieveSessionsForClearDevice,
+  processClearDeviceAndLogin,
 } = UserServices;
 
 const UserControllers = {
@@ -40,41 +53,72 @@ const UserControllers = {
    * @param res request
    * @param next next function
    * This Handler Accept name,email,password as string in req.body object.we destructure the object and pass to processSignup service.processSignup service return the created user or if error occurred throw error.
-   * @returns successful user creation processSignup return us created user and we send the response with success flag,short message and in data with created user object.
+   * @returns successful user creation processSignup return us created user and we send the response with activation token in cookie and with success flag,short message and in data with created user object.
    * @error on error we simply call the next function with error
    */
   handleSignUp: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, email, password } = req.body;
-      const createdUser = await processSignup({
+      const { activationToken, createdUser } = await processSignup({
         name,
         email,
         password: { secret: password, change_at: new Date().toISOString() },
         provider: AuthType.LOCAL,
       });
+      const createdUserData = CreateUserResponseDTO.fromEntity(createdUser);
+      res.cookie(
+        'actv_token',
+        activationToken,
+        cookieOption(activationTokenExpiresIn)
+      );
       res.status(201).json({
         success: true,
-        message: 'User signup successful',
-        data: createdUser,
+        message: 'User created',
+        data: createdUserData,
       });
     } catch (error) {
       logger.error(error);
       next(error);
     }
   },
-  handleCheck: (req: Request, res: Response, next: NextFunction) => {
+  /**
+   *
+   */
+  handleCheckActivationTokenValidity: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      res.status(204).send();
+      res.status(200).json({
+        success: true,
+        message: 'Token Is Valid',
+      });
     } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
+      logger.error(error);
       next(error);
     }
   },
+  /**
+   * Verify User Signup User Email
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
   handleVerifyUser: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req?.user as IUser;
-      const { accessToken, refreshToken } = await processVerifyUser(user);
+      const { sub } = req?.decoded as TokenPayload;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processVerifyUser({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        userId: sub,
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+      });
+      res.clearCookie('actv_token', cookieOption(activationTokenExpiresIn));
       res.cookie(
         'accesstoken',
         accessToken,
@@ -94,22 +138,147 @@ const UserControllers = {
       next(error);
     }
   },
+  /**
+   * Resend The Otp For Verify Signup User Email
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
   handleResend: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req?.user as IUser;
-      await processResend(user);
+      const availableAt = req.availableAt;
+      const { sub } = req.decoded;
+      await processResend(sub);
       res.status(200).json({
         success: true,
         message: 'Verification Email Resend Successful',
+        data: { availableAt },
       });
     } catch (error) {
       logger.error(error);
       next(error);
     }
   },
-  handleLogin: (req: Request, res: Response, next: NextFunction) => {
+  handleCheckResendStatus: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { sub } = req.decoded;
     try {
-      const { accessToken, refreshToken } = processLogin(req.user as IUser);
+      const data = await processCheckResendStatus({ userId: sub });
+      res.status(200).json({
+        success: true,
+        message: 'Availability check successful',
+        data,
+      });
+      return;
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+  /**
+   * AccessToken Check Handler
+   *
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
+  handleCheck: (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(204).send();
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleRetrieveSessionsForClearDevice: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const sessions = await processRetrieveSessionsForClearDevice({
+        userId: sub as string,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Sessions retrieve successful',
+        data: sessions,
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleClearDeviceAndLogin: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub, rememberMe, provider } = req.decoded;
+      const { devices } = req.body;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processClearDeviceAndLogin({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        user: sub as string,
+        rememberMe,
+        devices: devices,
+        provider,
+      });
+      const refreshTokenCookieExpiresIn =
+        rememberMe || provider === AuthType.GOOGLE
+          ? refreshTokenExpiresIn
+          : refreshTokenExpiresInWithoutRememberMe;
+      res.clearCookie(
+        '__clear_device',
+        cookieOption(clearDevicePageTokenExpireIn)
+      );
+      res.cookie(
+        'accesstoken',
+        accessToken,
+        cookieOption(accessTokenExpiresIn)
+      );
+      res.cookie(
+        'refreshtoken',
+        refreshToken,
+        cookieOption(refreshTokenCookieExpiresIn)
+      );
+      res.status(200).json({
+        status: 'success',
+        message: 'Login successful',
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleLogin: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { user } = req.user as TRequestUser;
+      const { rememberMe } = req.body;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processLogin({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        user,
+        rememberMe,
+      });
       res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
       res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
       res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
@@ -121,7 +290,11 @@ const UserControllers = {
       res.cookie(
         'refreshtoken',
         refreshToken,
-        cookieOption(refreshTokenExpiresIn)
+        cookieOption(
+          rememberMe
+            ? refreshTokenExpiresIn
+            : refreshTokenExpiresInWithoutRememberMe
+        )
       );
       res.status(200).json({
         status: 'success',
@@ -134,14 +307,29 @@ const UserControllers = {
       next(error);
     }
   },
+  /**
+   * Handler to log out a user and invalidate their session.
+   *
+   * Responsibilities:
+   * - Extracts `sub` (user ID) and `sid` (session ID) from the decoded token.
+   * - Calls `processLogout` to revoke the access and refresh tokens in Redis.
+   * - Clears authentication cookies (`accesstoken`, `refreshtoken`).
+   * - Responds with a 200 status and a success message on completion.
+   *
+   * @param req - Express request object (must include `decoded`)
+   * @param res - Express response object
+   * @param next - Express next middleware function
+   */
+
   handleLogout: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { userId } = req.decoded;
+      const { sub, sid } = req.decoded;
       const { accesstoken, refreshtoken } = req.cookies;
       await processLogout({
         accessToken: accesstoken,
         refreshToken: refreshtoken,
-        userId,
+        userId: sub,
+        sid: sid as string,
       });
       res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
       res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
@@ -162,25 +350,15 @@ const UserControllers = {
     next: NextFunction
   ) => {
     try {
-      const currentRefreshToken = req.cookies?.refreshtoken;
-      const { email, isVerified, name, userId } = req.decoded;
-      const { accessToken, refreshToken } = await processTokens({
+      const { sid, userId } = req.decoded;
+      const { accessToken } = await processRefreshToken({
         userId,
-        email,
-        isVerified,
-        name,
-        refreshToken: currentRefreshToken,
+        sid: sid as string,
       });
-      res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
       res.cookie(
         'accesstoken',
         accessToken,
         cookieOption(accessTokenExpiresIn)
-      );
-      res.cookie(
-        'refreshtoken',
-        refreshToken,
-        cookieOption(refreshTokenExpiresIn)
       );
       res.status(200).json({
         status: 'success',
@@ -193,213 +371,223 @@ const UserControllers = {
       next(error);
     }
   },
-  handleFindUser: async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const user = req.user as IUser;
-      const { r_stp1 } = processFindUser(user);
-      res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
-      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-      res.cookie('r_stp1', r_stp1, cookieOption(recoverSessionExpiresIn));
-      res.status(200).json({
-        status: 'success',
-        message: 'User Found',
-        stepToken: r_stp1,
-      });
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleCheckR_Stp1: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { email, name, avatar } = req.decoded;
-      res.status(200).json({
-        status: 'success',
-        data: { email, name, avatar },
-      });
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleCheckR_Stp2: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      res.status(204).send();
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleCheckR_Stp3: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      res.status(204).send();
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleSentRecoverOtp: async (
+  // handleFindUser: async (req: Request, res: Response, next: NextFunction) => {
+  //   try {
+  //     const user = req.user as IUser;
+  //     const { r_stp1 } = processFindUser(user);
+  //     res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
+  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+  //     res.cookie('r_stp1', r_stp1, cookieOption(recoverSessionExpiresIn));
+  //     res.status(200).json({
+  //       status: 'success',
+  //       message: 'User Found',
+  //       stepToken: r_stp1,
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  // handleCheckR_Stp1: (req: Request, res: Response, next: NextFunction) => {
+  //   try {
+  //     const { email, name, avatar } = req.decoded;
+  //     res.status(200).json({
+  //       status: 'success',
+  //       data: { email, name, avatar },
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  // handleCheckR_Stp2: (req: Request, res: Response, next: NextFunction) => {
+  //   try {
+  //     res.status(204).send();
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  // handleCheckR_Stp3: (req: Request, res: Response, next: NextFunction) => {
+  //   try {
+  //     res.status(204).send();
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  // handleSentRecoverOtp: async (
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction
+  // ) => {
+  //   try {
+  //     const { email, isVerified, name, userId, avatar } = req.decoded;
+  //     const r_stp1 = req.cookies?.r_stp1;
+  //     const { r_stp2 } = await processSentRecoverAccountOtp({
+  //       email,
+  //       isVerified,
+  //       name,
+  //       userId,
+  //       avatar,
+  //       r_stp1,
+  //     });
+  //     res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
+  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+  //     res.cookie('r_stp2', r_stp2, cookieOption(recoverSessionExpiresIn));
+  //     res.status(200).json({
+  //       status: 'success',
+  //       message: 'Recover Otp Send Successful',
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  // handleVerifyRecoverOtp: async (
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction
+  // ) => {
+  //   try {
+  //     const { email, isVerified, name, userId, avatar } = req.decoded;
+  //     const r_stp2 = req.cookies?.r_stp2;
+  //     const { r_stp3 } = await processVerifyOtp({
+  //       email,
+  //       isVerified,
+  //       name,
+  //       userId,
+  //       avatar,
+  //       r_stp2,
+  //     });
+  //     res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
+  //     res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
+  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+  //     res.cookie('r_stp3', r_stp3, cookieOption(recoverSessionExpiresIn));
+  //     res.status(200).json({
+  //       status: 'success',
+  //       message: 'OTP verification successful',
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  // handleResendRecoverOtp: async (
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction
+  // ) => {
+  //   try {
+  //     const { email, name, userId } = req.decoded;
+  //     await processReSentRecoverAccountOtp({ email, name, userId });
+  //     res.status(200).json({
+  //       status: 'success',
+  //       message: 'OTP resent successful',
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  // handleResetPassword: async (
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction
+  // ) => {
+  //   try {
+  //     const { password } = req.body;
+  //     const { email, name, userId, isVerified } = req.decoded;
+  //     const r_stp3 = req.cookies?.r_stp3;
+  //     const ipAddress = getRealIP(req);
+  //     let locationInfo = null;
+  //     let location = 'Unknown';
+  //     if (
+  //       ipAddress &&
+  //       ipAddress !== '::1' &&
+  //       ipAddress !== '127.0.0.1' &&
+  //       ipAddress.length > 5
+  //     ) {
+  //       try {
+  //         locationInfo = await getLocationFromIP(ipAddress);
+  //         if (
+  //           locationInfo?.city &&
+  //           locationInfo?.regionName &&
+  //           locationInfo?.country
+  //         ) {
+  //           location = `${locationInfo.city}, ${locationInfo.regionName}, ${locationInfo.country}`;
+  //         }
+  //       } catch (locationError) {
+  //         console.error('Location lookup failed:', locationError);
+  //       }
+  //     }
+  //     const { browser, device, os } = UAParser(req.useragent?.source);
+  //     const userDevice = `${browser.name} ${browser.version} on ${os.name}(${device.type})`;
+  //     const { accessToken, refreshToken } = await processResetPassword({
+  //       email,
+  //       name,
+  //       userId,
+  //       isVerified,
+  //       r_stp3,
+  //       device: userDevice,
+  //       ipAddress: ipAddress,
+  //       location: location,
+  //       password: { secret: password, change_at: new Date().toISOString() },
+  //     });
+  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+  //     res.cookie(
+  //       'accesstoken',
+  //       accessToken,
+  //       cookieOption(accessTokenExpiresIn)
+  //     );
+  //     res.cookie(
+  //       'refreshtoken',
+  //       refreshToken,
+  //       cookieOption(refreshTokenExpiresIn)
+  //     );
+  //     res.status(200).json({
+  //       status: 'success',
+  //       message: 'Password Reset Successful',
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     logger.error(err.message);
+  //     next(error);
+  //   }
+  // },
+  handleProcessOAuthCallback: async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
+    const { user, activity } = req.user as TRequestUser;
     try {
-      const { email, isVerified, name, userId, avatar } = req.decoded;
-      const r_stp1 = req.cookies?.r_stp1;
-      const { r_stp2 } = await processSentRecoverAccountOtp({
-        email,
-        isVerified,
-        name,
-        userId,
-        avatar,
-        r_stp1,
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { accessToken, refreshToken } = await processOAuthCallback({
+        user,
+        activity: activity as ActivityType,
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
       });
-      res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
-      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-      res.cookie('r_stp2', r_stp2, cookieOption(recoverSessionExpiresIn));
-      res.status(200).json({
-        status: 'success',
-        message: 'Recover Otp Send Successful',
-      });
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleVerifyRecoverOtp: async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      const { email, isVerified, name, userId, avatar } = req.decoded;
-      const r_stp2 = req.cookies?.r_stp2;
-      const { r_stp3 } = await processVerifyOtp({
-        email,
-        isVerified,
-        name,
-        userId,
-        avatar,
-        r_stp2,
-      });
-      res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
-      res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
-      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-      res.cookie('r_stp3', r_stp3, cookieOption(recoverSessionExpiresIn));
-      res.status(200).json({
-        status: 'success',
-        message: 'OTP verification successful',
-      });
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleResendRecoverOtp: async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      const { email, name, userId } = req.decoded;
-      await processReSentRecoverAccountOtp({ email, name, userId });
-      res.status(200).json({
-        status: 'success',
-        message: 'OTP resent successful',
-      });
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleResetPassword: async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      const { password } = req.body;
-      const { email, name, userId, isVerified } = req.decoded;
-      const r_stp3 = req.cookies?.r_stp3;
-      const ipAddress = getRealIP(req);
-      let locationInfo = null;
-      let location = 'Unknown';
-      if (
-        ipAddress &&
-        ipAddress !== '::1' &&
-        ipAddress !== '127.0.0.1' &&
-        ipAddress.length > 5
-      ) {
-        try {
-          locationInfo = await getLocationFromIP(ipAddress);
-          if (
-            locationInfo?.city &&
-            locationInfo?.regionName &&
-            locationInfo?.country
-          ) {
-            location = `${locationInfo.city}, ${locationInfo.regionName}, ${locationInfo.country}`;
-          }
-        } catch (locationError) {
-          console.error('Location lookup failed:', locationError);
-        }
-      }
-      const { browser, device, os } = UAParser(req.useragent?.source);
-      const userDevice = `${browser.name} ${browser.version} on ${os.name}(${device.type})`;
-      const { accessToken, refreshToken } = await processResetPassword({
-        email,
-        name,
-        userId,
-        isVerified,
-        r_stp3,
-        device: userDevice,
-        ipAddress: ipAddress,
-        location: location,
-        password: { secret: password, change_at: new Date().toISOString() },
-      });
-      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-      res.cookie(
-        'accesstoken',
-        accessToken,
-        cookieOption(accessTokenExpiresIn)
-      );
-      res.cookie(
-        'refreshtoken',
-        refreshToken,
-        cookieOption(refreshTokenExpiresIn)
-      );
-      res.status(200).json({
-        status: 'success',
-        message: 'Password Reset Successful',
-      });
-      return;
-    } catch (error) {
-      const err = error as Error;
-      logger.error(err.message);
-      next(error);
-    }
-  },
-  handleProcessOAuthCallback: (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    const user = req.user as IUser;
-    try {
-      const { accessToken, refreshToken } = processOAuthCallback(user);
       res.cookie(
         'accesstoken',
         accessToken,
@@ -411,6 +599,98 @@ const UserControllers = {
         cookieOption(refreshTokenExpiresIn)
       );
       res.redirect(CLIENT_BASE_URL);
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  /**
+   * This handle function is for account activation
+   * @param req Request param for getting request details and data
+   * @param res Response param for getting response details and data
+   * @param next Next param for passing the request to next function
+   * This handler didn't accept any data in body and query.Its only accept data in request params,An valid uuid token.
+   * @return Its return an success response or error response base on query
+   * @error Its throw global error if any incident happened during database query
+   */
+  handleAccountActivation: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { uuid } = req.params;
+      const userId = req.user as string;
+      const token = processAccountActivation(userId);
+      res.cookie(
+        '__actvwithcngpass',
+        token,
+        cookieOption(changePasswordPageTokenExpiresIn)
+      );
+      res.redirect(`${CLIENT_BASE_URL}/activation/change/${uuid}`);
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCheckChangePasswordPageToken: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      res.status(200).json({ success: true, message: 'Token is valid' });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleChangePasswordAndAccountActivation: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      const { password } = req.body;
+      const token = req.cookies.__actvwithcngpass;
+      const userId = req.user;
+      const { uuid } = req.params;
+      await processChangePasswordAndAccountActivation({
+        userId: userId as string,
+        token,
+        uuid,
+        password,
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+      });
+      res.clearCookie(
+        '__actvwithcngpass',
+        cookieOption(changePasswordPageTokenExpiresIn)
+      );
+      res
+        .status(200)
+        .json({ success: true, message: 'Account activation complete' });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCheckClearDevicePageToken: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      res.status(200).json({ success: true, message: 'Token Is Validate' });
     } catch (error) {
       const err = error as Error;
       logger.error(err.message);
