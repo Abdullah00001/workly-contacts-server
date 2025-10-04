@@ -19,6 +19,7 @@ import IUser, {
   TProcessCheckResendStatus,
   TProcessRetrieveSessionsForClearDevice,
   TProcessClearDeviceAndLoginPayload,
+  TProcessFindUser,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
@@ -47,6 +48,7 @@ import {
   AuthType,
 } from '@/modules/user/user.enums';
 import { TRequestUser } from '@/types/express';
+import { RecoverUserInfoDTO } from '@/modules/user/user.dto';
 
 const { hashPassword } = PasswordUtils;
 const {
@@ -538,81 +540,78 @@ const UserServices = {
       }
     }
   },
-  // processFindUser: ({
-  //   _id,
-  //   email,
-  //   isVerified,
-  //   name,
-  //   avatar,
-  // }: IUser): IProcessFindUserReturn => {
-  //   try {
-  //     const r_stp1 = generateRecoverToken({
-  //       userId: _id as Types.ObjectId,
-  //       email,
-  //       isVerified,
-  //       name,
-  //       avatar,
-  //     });
-  //     return { r_stp1: r_stp1 as string };
-  //   } catch (error) {
-  //     if (error instanceof Error) {
-  //       throw error;
-  //     } else {
-  //       throw new Error('Unknown Error Occurred In Process Find User Service');
-  //     }
-  //   }
-  // },
-  // processSentRecoverAccountOtp: async ({
-  //   email,
-  //   name,
-  //   isVerified,
-  //   userId,
-  //   avatar,
-  //   r_stp1,
-  // }: IProcessRecoverAccountPayload): Promise<IProcessFindUserReturn> => {
-  //   try {
-  //     const otp = generate(6, {
-  //       digits: true,
-  //       lowerCaseAlphabets: false,
-  //       specialChars: false,
-  //       upperCaseAlphabets: false,
-  //     });
-  //     await Promise.all([
-  //       await redisClient.set(
-  //         `blacklist:recover:r_stp1:${userId}`,
-  //         r_stp1!,
-  //         'PX',
-  //         expiresInTimeUnitToMs(recoverSessionExpiresIn)
-  //       ),
-  //       redisClient.set(
-  //         `user:recover:otp:${userId}`,
-  //         otp,
-  //         'PX',
-  //         calculateMilliseconds(otpExpireAt, 'minute')
-  //       ),
-  //       addSendAccountRecoverOtpEmailToQueue({
-  //         email,
-  //         expirationTime: otpExpireAt,
-  //         name,
-  //         otp,
-  //       }),
-  //     ]);
-  //     const r_stp2 = generateRecoverToken({
-  //       userId,
-  //       email,
-  //       isVerified: isVerified!,
-  //       name,
-  //       avatar,
-  //     });
-  //     return { r_stp2: r_stp2 as string };
-  //   } catch (error) {
-  //     if (error instanceof Error) {
-  //       throw error;
-  //     } else {
-  //       throw new Error('Unknown Error Occurred In Process Find User Service');
-  //     }
-  //   }
-  // },
+  processFindUser: ({ userId }: TProcessFindUser): IProcessFindUserReturn => {
+    try {
+      const r_stp1 = generateRecoverToken({
+        sub: userId,
+      });
+      return { r_stp1: r_stp1 as string };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Process Find User Service');
+      }
+    }
+  },
+  processRecoverUserInfo: async (userId: string) => {
+    try {
+      const data = await findUserById(userId);
+      return RecoverUserInfoDTO.fromEntity(data);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Retrieve User Info Service'
+        );
+      }
+    }
+  },
+  processSentRecoverAccountOtp: async ({
+    userId,
+    r_stp1,
+  }: IProcessRecoverAccountPayload): Promise<IProcessFindUserReturn> => {
+    try {
+      const { email, name } = await findUserById(userId);
+      const otp = generate(6, {
+        digits: true,
+        lowerCaseAlphabets: false,
+        specialChars: false,
+        upperCaseAlphabets: false,
+      });
+      await Promise.all([
+        await redisClient.set(
+          `blacklist:recover:r_stp1:${userId}`,
+          r_stp1!,
+          'PX',
+          expiresInTimeUnitToMs(recoverSessionExpiresIn)
+        ),
+        redisClient.set(
+          `user:recover:otp:${userId}`,
+          otp,
+          'PX',
+          calculateMilliseconds(otpExpireAt, 'minute')
+        ),
+        addSendAccountRecoverOtpEmailToQueue({
+          email,
+          expirationTime: otpExpireAt,
+          name,
+          otp,
+        }),
+      ]);
+      const r_stp2 = generateRecoverToken({
+        sub: userId,
+      });
+      return { r_stp2: r_stp2 as string };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Process Find User Service');
+      }
+    }
+  },
   // processVerifyOtp: async ({
   //   email,
   //   isVerified,

@@ -33,3 +33,20 @@ export class CreateUserResponseDTO extends BaseDTO<IUser> {
     this.avatar = user.avatar;
   }
 }
+
+export class RecoverUserInfoDTO extends BaseDTO<IUser> {
+  /** User's full name */
+  public name: string;
+
+  /** User's email address */
+  public email: string;
+
+  /** User's avatar image */
+  public avatar: TImage;
+  constructor(user: IUser) {
+    super(user);
+    this.name = user.name;
+    this.email = user.email;
+    this.avatar = user.avatar;
+  }
+}

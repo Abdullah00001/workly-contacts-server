@@ -10,14 +10,14 @@ const {
   checkOtp,
   isUserExistAndVerified,
   checkPassword,
-  // isUserExist,
-  // isUserVerified,
+  isUserExist,
+  isUserVerified,
   checkAccessToken,
   checkRefreshToken,
   // checkRecoverOtp,
-  // checkR_stp1Token,
-  // checkR_stp2Token,
-  // checkR_stp3Token,
+  checkR_stp1Token,
+  checkR_stp2Token,
+  checkR_stp3Token,
   otpRateLimiter,
   resendOtpEmailCoolDown,
   checkActivationToken,
@@ -40,20 +40,21 @@ const {
   handleResend,
   handleCheckResendStatus,
   handleCheckClearDevicePageToken,
-  // handleFindUser,
-  // handleSentRecoverOtp,
+  handleFindUser,
+  handleSentRecoverOtp,
   // handleVerifyRecoverOtp,
   // handleResendRecoverOtp,
   // handleResetPassword,
-  // handleCheckR_Stp1,
-  // handleCheckR_Stp2,
-  // handleCheckR_Stp3,
+  handleCheckR_Stp1,
+  handleCheckR_Stp2,
+  handleCheckR_Stp3,
   handleProcessOAuthCallback,
   handleCheckChangePasswordPageToken,
   handleChangePasswordAndAccountActivation,
   handleCheckActivationTokenValidity,
   handleRetrieveSessionsForClearDevice,
   handleClearDeviceAndLogin,
+  handleRecoverUserInfo,
 } = UserControllers;
 
 const router = Router();
@@ -134,21 +135,23 @@ router
   .post(checkChangePasswordPageToken, handleChangePasswordAndAccountActivation);
 
 //These Routes Are For Recover Or Forget Password
-// router
-//   .route('/auth/recover/check/stp1')
-//   .post(checkR_stp1Token, handleCheckR_Stp1);
-// router
-//   .route('/auth/recover/check/stp2')
-//   .post(checkR_stp2Token, handleCheckR_Stp2);
-// router
-//   .route('/auth/recover/check/stp3')
-//   .post(checkR_stp3Token, handleCheckR_Stp3);
-// router
-//   .route('/auth/recover/find')
-//   .post(isUserExist, isUserVerified, handleFindUser);
-// router
-//   .route('/auth/recover/sent-otp')
-//   .post(checkR_stp1Token, handleSentRecoverOtp);
+router
+  .route('/auth/recover/check/stp1')
+  .get(checkR_stp1Token, handleCheckR_Stp1);
+
+router
+  .route('/auth/recover/check/stp2')
+  .get(checkR_stp2Token, handleCheckR_Stp2);
+router
+  .route('/auth/recover/check/stp3')
+  .get(checkR_stp3Token, handleCheckR_Stp3);
+router
+  .route('/auth/recover/find')
+  .post(isUserExist, isUserVerified, handleFindUser);
+router.route('/auth/recover/user').get(checkR_stp1Token, handleRecoverUserInfo);
+router
+  .route('/auth/recover/sent-otp')
+  .post(checkR_stp1Token, handleSentRecoverOtp);
 // router
 //   .route('/auth/recover/verify')
 //   .post(checkR_stp2Token, checkRecoverOtp, handleVerifyRecoverOtp);
