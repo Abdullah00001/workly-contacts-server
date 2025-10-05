@@ -44,7 +44,7 @@ const {
   handleSentRecoverOtp,
   handleVerifyRecoverOtp,
   handleResendRecoverOtp,
-  // handleResetPassword,
+  handleResetPassword,
   handleCheckR_Stp1,
   handleCheckR_Stp2,
   handleCheckR_Stp3,
@@ -168,8 +168,8 @@ router
   .route('/auth/recover/resend/status')
   .get(checkR_stp2Token, handleCheckResendStatus);
 
-// router
-//   .route('/auth/recover/reset')
-//   .patch(checkR_stp3Token, handleResetPassword);
+router
+  .route('/auth/recover/reset')
+  .patch(checkR_stp3Token, handleResetPassword);
 
 export default router;

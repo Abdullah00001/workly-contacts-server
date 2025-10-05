@@ -37,6 +37,17 @@ const ActivityQueueJobs = {
       backoff: { type: 'exponential', delay: 3000 },
     });
   },
+  passwordResetActivitySavedInDb: async (data: IActivityPayload) => {
+    await ActivityQueue.add(
+      'save-account-password-reset-activity-to-db',
+      data,
+      {
+        attempts: 3,
+        removeOnComplete: true,
+        backoff: { type: 'exponential', delay: 3000 },
+      }
+    );
+  },
 };
 
 export default ActivityQueueJobs;

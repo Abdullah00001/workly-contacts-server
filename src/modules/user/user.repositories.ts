@@ -136,11 +136,12 @@ const UserRepositories = {
     userId,
   }: IResetPasswordRepositoryPayload) => {
     try {
-      await User.findByIdAndUpdate(
+      const user = await User.findByIdAndUpdate(
         userId,
         { $set: { password } },
         { new: true }
       );
+      return user;
     } catch (error) {
       if (error instanceof Error) {
         throw error;

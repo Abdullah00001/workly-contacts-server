@@ -168,17 +168,16 @@ export interface IResetPasswordRepositoryPayload {
   userId: Types.ObjectId;
 }
 
-export interface IResetPasswordServicePayload {
-  userId: Types.ObjectId;
-  email: string;
-  password: IPassword;
+export type TResetPasswordServicePayload = {
+  userId: string;
+  password: string;
   r_stp3: string;
+  browser: string;
+  deviceType: string;
+  os: string;
   location: string;
-  device: string;
   ipAddress: string;
-  name: string;
-  isVerified: boolean;
-}
+};
 
 export interface IResetPasswordServiceReturnPayload {
   accessToken: string;

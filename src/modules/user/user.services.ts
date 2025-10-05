@@ -1,10 +1,8 @@
 import UserRepositories from '@/modules/user/user.repositories';
-import IUser, {
+import {
   IActivityPayload,
   IProcessFindUserReturn,
   IProcessRecoverAccountPayload,
-  IResetPasswordServicePayload,
-  IResetPasswordServiceReturnPayload,
   IUserPayload,
   TAccountUnlockedEmailPayload,
   TLoginSuccessEmailPayload,
@@ -20,6 +18,8 @@ import IUser, {
   TProcessRetrieveSessionsForClearDevice,
   TProcessClearDeviceAndLoginPayload,
   TProcessFindUser,
+  TResetPasswordServicePayload,
+  IResetPasswordSendEmailPayload,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
@@ -34,7 +34,6 @@ import {
 } from '@/const';
 import JwtUtils from '@/utils/jwt.utils';
 import mongoose, { Types } from 'mongoose';
-import { IRefreshTokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import CalculationUtils from '@/utils/calculation.utils';
 import PasswordUtils from '@/utils/password.utils';
 import EmailQueueJobs from '@/queue/jobs/email.jobs';
@@ -42,12 +41,7 @@ import { OtpUtilsSingleton } from '@/singletons';
 import { v4 as uuidv4 } from 'uuid';
 import DateUtils from '@/utils/date.utils';
 import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
-import {
-  AccountStatus,
-  ActivityType,
-  AuthType,
-} from '@/modules/user/user.enums';
-import { TRequestUser } from '@/types/express';
+import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { RecoverUserInfoDTO } from '@/modules/user/user.dto';
 
 const { hashPassword } = PasswordUtils;
@@ -63,14 +57,13 @@ const {
   signupSuccessActivitySavedInDb,
   loginSuccessActivitySavedInDb,
   accountUnlockActivitySavedInDb,
+  passwordResetActivitySavedInDb,
 } = ActivityQueueJobs;
 const {
   createNewUser,
   verifyUser,
-  findUserByEmail,
   resetPassword,
   findUserById,
-  updateUserAccountStatus,
   changePasswordAndAccountActivation,
 } = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
@@ -674,59 +667,68 @@ const UserServices = {
       }
     }
   },
-  // processResetPassword: async ({
-  //   device,
-  //   email,
-  //   ipAddress,
-  //   location,
-  //   name,
-  //   r_stp3,
-  //   userId,
-  //   password,
-  //   isVerified,
-  // }: IResetPasswordServicePayload): Promise<IResetPasswordServiceReturnPayload> => {
-  //   try {
-  //     const hashed = (await hashPassword(password.secret)) as string;
-  //     const newAccessToken = generateAccessToken({
-  //       email,
-  //       isVerified,
-  //       userId,
-  //       name,
-  //     }) as string;
-
-  //     const newRefreshToken = generateRefreshToken({
-  //       email,
-  //       isVerified,
-  //       userId,
-  //       name,
-  //     }) as string;
-  //     await Promise.all([
-  //       resetPassword({ userId, password: { ...password, secret: hashed } }),
-  //       redisClient.set(
-  //         `blacklist:recover:r_stp2:${userId}`,
-  //         r_stp3,
-  //         'PX',
-  //         expiresInTimeUnitToMs(recoverSessionExpiresIn)
-  //       ),
-  //       addSendPasswordResetNotificationEmailToQueue({
-  //         device,
-  //         email,
-  //         ipAddress,
-  //         location,
-  //         name,
-  //       }),
-  //     ]);
-  //     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
-  //   } catch (error) {
-  //     if (error instanceof Error) {
-  //       throw error;
-  //     } else {
-  //       throw new Error(
-  //         'Unknown Error Occurred In Process Reset Password Service'
-  //       );
-  //     }
-  //   }
-  // },
+  processResetPassword: async ({
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+    password,
+    r_stp3,
+    userId,
+  }: TResetPasswordServicePayload) => {
+    const id = new mongoose.Types.ObjectId(userId);
+    try {
+      const hashed = (await hashPassword(password)) as string;
+      const newPassword = {
+        secret: hashed,
+        change_at: new Date().toISOString(),
+      };
+      const user = await resetPassword({
+        userId: id,
+        password: newPassword,
+      });
+      if (!user) throw new Error('No User Found');
+      const { email, name } = user;
+      const emailPayload: IResetPasswordSendEmailPayload = {
+        name,
+        email,
+        device: deviceType,
+        ipAddress,
+        location,
+      };
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.PASSWORD_RESET,
+        title: AccountActivityMap.PASSWORD_RESET.title,
+        description: AccountActivityMap.PASSWORD_RESET.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: user?._id as Types.ObjectId,
+      };
+      await Promise.all([
+        redisClient.set(
+          `blacklist:recover:r_stp2:${userId}`,
+          r_stp3,
+          'PX',
+          expiresInTimeUnitToMs(recoverSessionExpiresIn)
+        ),
+        addSendPasswordResetNotificationEmailToQueue(emailPayload),
+        passwordResetActivitySavedInDb(activityPayload),
+      ]);
+      return;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Reset Password Service'
+        );
+      }
+    }
+  },
   processOAuthCallback: async ({
     user,
     activity,

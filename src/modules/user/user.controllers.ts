@@ -8,16 +8,13 @@ import {
   activationTokenExpiresIn,
   changePasswordPageTokenExpiresIn,
   clearDevicePageTokenExpireIn,
-  getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
   refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
 import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { env } from '@/env';
-import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
-import { Types } from 'mongoose';
 import { CreateUserResponseDTO } from '@/modules/user/user.dto';
 import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import { TRequestUser } from '@/types/express';
@@ -38,7 +35,7 @@ const {
   processSentRecoverAccountOtp,
   processVerifyOtp,
   processReSentRecoverAccountOtp,
-  // processResetPassword,
+  processResetPassword,
   processOAuthCallback,
   processAccountActivation,
   processChangePasswordAndAccountActivation,
@@ -525,72 +522,41 @@ const UserControllers = {
       next(error);
     }
   },
-  // handleResetPassword: async (
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ) => {
-  //   try {
-  //     const { password } = req.body;
-  //     const { email, name, userId, isVerified } = req.decoded;
-  //     const r_stp3 = req.cookies?.r_stp3;
-  //     const ipAddress = getRealIP(req);
-  //     let locationInfo = null;
-  //     let location = 'Unknown';
-  //     if (
-  //       ipAddress &&
-  //       ipAddress !== '::1' &&
-  //       ipAddress !== '127.0.0.1' &&
-  //       ipAddress.length > 5
-  //     ) {
-  //       try {
-  //         locationInfo = await getLocationFromIP(ipAddress);
-  //         if (
-  //           locationInfo?.city &&
-  //           locationInfo?.regionName &&
-  //           locationInfo?.country
-  //         ) {
-  //           location = `${locationInfo.city}, ${locationInfo.regionName}, ${locationInfo.country}`;
-  //         }
-  //       } catch (locationError) {
-  //         console.error('Location lookup failed:', locationError);
-  //       }
-  //     }
-  //     const { browser, device, os } = UAParser(req.useragent?.source);
-  //     const userDevice = `${browser.name} ${browser.version} on ${os.name}(${device.type})`;
-  //     const { accessToken, refreshToken } = await processResetPassword({
-  //       email,
-  //       name,
-  //       userId,
-  //       isVerified,
-  //       r_stp3,
-  //       device: userDevice,
-  //       ipAddress: ipAddress,
-  //       location: location,
-  //       password: { secret: password, change_at: new Date().toISOString() },
-  //     });
-  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-  //     res.cookie(
-  //       'accesstoken',
-  //       accessToken,
-  //       cookieOption(accessTokenExpiresIn)
-  //     );
-  //     res.cookie(
-  //       'refreshtoken',
-  //       refreshToken,
-  //       cookieOption(refreshTokenExpiresIn)
-  //     );
-  //     res.status(200).json({
-  //       status: 'success',
-  //       message: 'Password Reset Successful',
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
+  handleResetPassword: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { password } = req.body;
+      const { sub } = req.decoded;
+      const r_stp3 = req.cookies?.r_stp3;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      await processResetPassword({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        userId: sub,
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        password,
+        r_stp3,
+      });
+      res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+      res.status(200).json({
+        status: 'success',
+        message: 'Password Reset Successful',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
   handleProcessOAuthCallback: async (
     req: Request,
     res: Response,
