@@ -14,7 +14,7 @@ const {
   isUserVerified,
   checkAccessToken,
   checkRefreshToken,
-  // checkRecoverOtp,
+  checkRecoverOtp,
   checkR_stp1Token,
   checkR_stp2Token,
   checkR_stp3Token,
@@ -42,8 +42,8 @@ const {
   handleCheckClearDevicePageToken,
   handleFindUser,
   handleSentRecoverOtp,
-  // handleVerifyRecoverOtp,
-  // handleResendRecoverOtp,
+  handleVerifyRecoverOtp,
+  handleResendRecoverOtp,
   // handleResetPassword,
   handleCheckR_Stp1,
   handleCheckR_Stp2,
@@ -134,7 +134,6 @@ router
   .route('/auth/active/change/:uuid')
   .post(checkChangePasswordPageToken, handleChangePasswordAndAccountActivation);
 
-//These Routes Are For Recover Or Forget Password
 router
   .route('/auth/recover/check/stp1')
   .get(checkR_stp1Token, handleCheckR_Stp1);
@@ -152,13 +151,22 @@ router.route('/auth/recover/user').get(checkR_stp1Token, handleRecoverUserInfo);
 router
   .route('/auth/recover/sent-otp')
   .post(checkR_stp1Token, handleSentRecoverOtp);
-// router
-//   .route('/auth/recover/verify')
-//   .post(checkR_stp2Token, checkRecoverOtp, handleVerifyRecoverOtp);
+router
+  .route('/auth/recover/verify')
+  .post(
+    checkR_stp2Token,
+    otpRateLimiter,
+    checkRecoverOtp,
+    handleVerifyRecoverOtp
+  );
 
-// router
-//   .route('/auth/recover/resent')
-//   .post(checkR_stp2Token, handleResendRecoverOtp);
+router
+  .route('/auth/recover/resend')
+  .post(checkR_stp2Token, resendOtpEmailCoolDown, handleResendRecoverOtp);
+
+router
+  .route('/auth/recover/resend/status')
+  .get(checkR_stp2Token, handleCheckResendStatus);
 
 // router
 //   .route('/auth/recover/reset')
