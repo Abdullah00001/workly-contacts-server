@@ -187,8 +187,8 @@ const UserMiddlewares = {
   checkRecoverOtp: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { otp } = req.body;
-      const { userId } = req.decoded;
-      const storedOtp = await redisClient.get(`user:recover:otp:${userId}`);
+      const { sub } = req.decoded;
+      const storedOtp = await redisClient.get(`user:recover:otp:${sub}`);
       if (!storedOtp) {
         res
           .status(400)

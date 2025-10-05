@@ -155,11 +155,7 @@ export interface IProcessFindUserReturn {
 }
 
 export interface IProcessRecoverAccountPayload {
-  userId: Types.ObjectId;
-  email: string;
-  isVerified?: boolean;
-  name: string;
-  avatar?: IImage;
+  userId: string;
   r_stp1?: string;
   r_stp2?: string;
   r_stp3?: string;
@@ -172,17 +168,16 @@ export interface IResetPasswordRepositoryPayload {
   userId: Types.ObjectId;
 }
 
-export interface IResetPasswordServicePayload {
-  userId: Types.ObjectId;
-  email: string;
-  password: IPassword;
+export type TResetPasswordServicePayload = {
+  userId: string;
+  password: string;
   r_stp3: string;
+  browser: string;
+  deviceType: string;
+  os: string;
   location: string;
-  device: string;
   ipAddress: string;
-  name: string;
-  isVerified: boolean;
-}
+};
 
 export interface IResetPasswordServiceReturnPayload {
   accessToken: string;
@@ -325,6 +320,10 @@ export type TProcessClearDeviceAndLoginPayload = {
   devices: string[];
   rememberMe?: boolean;
   provider?: AuthType;
+};
+
+export type TProcessFindUser = {
+  userId: string;
 };
 
 export default IUser;

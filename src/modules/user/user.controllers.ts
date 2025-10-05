@@ -8,16 +8,13 @@ import {
   activationTokenExpiresIn,
   changePasswordPageTokenExpiresIn,
   clearDevicePageTokenExpireIn,
-  getLocationFromIP,
   recoverSessionExpiresIn,
   refreshTokenExpiresIn,
   refreshTokenExpiresInWithoutRememberMe,
 } from '@/const';
 import { ActivityType, AuthType } from '@/modules/user/user.enums';
 import { env } from '@/env';
-import { UAParser } from 'ua-parser-js';
 import ExtractMetaData from '@/utils/metaData.utils';
-import { Types } from 'mongoose';
 import { CreateUserResponseDTO } from '@/modules/user/user.dto';
 import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import { TRequestUser } from '@/types/express';
@@ -34,16 +31,17 @@ const {
   processLogout,
   processResend,
   processCheckResendStatus,
-  // processFindUser,
-  // processSentRecoverAccountOtp,
-  // processVerifyOtp,
-  // processReSentRecoverAccountOtp,
-  // processResetPassword,
+  processFindUser,
+  processSentRecoverAccountOtp,
+  processVerifyOtp,
+  processReSentRecoverAccountOtp,
+  processResetPassword,
   processOAuthCallback,
   processAccountActivation,
   processChangePasswordAndAccountActivation,
   processRetrieveSessionsForClearDevice,
   processClearDeviceAndLogin,
+  processRecoverUserInfo,
 } = UserServices;
 
 const UserControllers = {
@@ -371,205 +369,194 @@ const UserControllers = {
       next(error);
     }
   },
-  // handleFindUser: async (req: Request, res: Response, next: NextFunction) => {
-  //   try {
-  //     const user = req.user as IUser;
-  //     const { r_stp1 } = processFindUser(user);
-  //     res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
-  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-  //     res.cookie('r_stp1', r_stp1, cookieOption(recoverSessionExpiresIn));
-  //     res.status(200).json({
-  //       status: 'success',
-  //       message: 'User Found',
-  //       stepToken: r_stp1,
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
-  // handleCheckR_Stp1: (req: Request, res: Response, next: NextFunction) => {
-  //   try {
-  //     const { email, name, avatar } = req.decoded;
-  //     res.status(200).json({
-  //       status: 'success',
-  //       data: { email, name, avatar },
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
-  // handleCheckR_Stp2: (req: Request, res: Response, next: NextFunction) => {
-  //   try {
-  //     res.status(204).send();
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
-  // handleCheckR_Stp3: (req: Request, res: Response, next: NextFunction) => {
-  //   try {
-  //     res.status(204).send();
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
-  // handleSentRecoverOtp: async (
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ) => {
-  //   try {
-  //     const { email, isVerified, name, userId, avatar } = req.decoded;
-  //     const r_stp1 = req.cookies?.r_stp1;
-  //     const { r_stp2 } = await processSentRecoverAccountOtp({
-  //       email,
-  //       isVerified,
-  //       name,
-  //       userId,
-  //       avatar,
-  //       r_stp1,
-  //     });
-  //     res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
-  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-  //     res.cookie('r_stp2', r_stp2, cookieOption(recoverSessionExpiresIn));
-  //     res.status(200).json({
-  //       status: 'success',
-  //       message: 'Recover Otp Send Successful',
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
-  // handleVerifyRecoverOtp: async (
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ) => {
-  //   try {
-  //     const { email, isVerified, name, userId, avatar } = req.decoded;
-  //     const r_stp2 = req.cookies?.r_stp2;
-  //     const { r_stp3 } = await processVerifyOtp({
-  //       email,
-  //       isVerified,
-  //       name,
-  //       userId,
-  //       avatar,
-  //       r_stp2,
-  //     });
-  //     res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
-  //     res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
-  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-  //     res.cookie('r_stp3', r_stp3, cookieOption(recoverSessionExpiresIn));
-  //     res.status(200).json({
-  //       status: 'success',
-  //       message: 'OTP verification successful',
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
-  // handleResendRecoverOtp: async (
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ) => {
-  //   try {
-  //     const { email, name, userId } = req.decoded;
-  //     await processReSentRecoverAccountOtp({ email, name, userId });
-  //     res.status(200).json({
-  //       status: 'success',
-  //       message: 'OTP resent successful',
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
-  // handleResetPassword: async (
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ) => {
-  //   try {
-  //     const { password } = req.body;
-  //     const { email, name, userId, isVerified } = req.decoded;
-  //     const r_stp3 = req.cookies?.r_stp3;
-  //     const ipAddress = getRealIP(req);
-  //     let locationInfo = null;
-  //     let location = 'Unknown';
-  //     if (
-  //       ipAddress &&
-  //       ipAddress !== '::1' &&
-  //       ipAddress !== '127.0.0.1' &&
-  //       ipAddress.length > 5
-  //     ) {
-  //       try {
-  //         locationInfo = await getLocationFromIP(ipAddress);
-  //         if (
-  //           locationInfo?.city &&
-  //           locationInfo?.regionName &&
-  //           locationInfo?.country
-  //         ) {
-  //           location = `${locationInfo.city}, ${locationInfo.regionName}, ${locationInfo.country}`;
-  //         }
-  //       } catch (locationError) {
-  //         console.error('Location lookup failed:', locationError);
-  //       }
-  //     }
-  //     const { browser, device, os } = UAParser(req.useragent?.source);
-  //     const userDevice = `${browser.name} ${browser.version} on ${os.name}(${device.type})`;
-  //     const { accessToken, refreshToken } = await processResetPassword({
-  //       email,
-  //       name,
-  //       userId,
-  //       isVerified,
-  //       r_stp3,
-  //       device: userDevice,
-  //       ipAddress: ipAddress,
-  //       location: location,
-  //       password: { secret: password, change_at: new Date().toISOString() },
-  //     });
-  //     res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
-  //     res.cookie(
-  //       'accesstoken',
-  //       accessToken,
-  //       cookieOption(accessTokenExpiresIn)
-  //     );
-  //     res.cookie(
-  //       'refreshtoken',
-  //       refreshToken,
-  //       cookieOption(refreshTokenExpiresIn)
-  //     );
-  //     res.status(200).json({
-  //       status: 'success',
-  //       message: 'Password Reset Successful',
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     logger.error(err.message);
-  //     next(error);
-  //   }
-  // },
+  handleFindUser: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { user } = req.user as TRequestUser;
+      const { _id, name, avatar, email } = user as IUser;
+      const { r_stp1 } = processFindUser({ userId: _id as string });
+      res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+      res.cookie('r_stp1', r_stp1, cookieOption(recoverSessionExpiresIn));
+      res.status(200).json({
+        status: 'success',
+        message: 'User Found',
+        data: { name, avatar, email },
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCheckR_Stp1: (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(200).json({
+        status: true,
+        message: 'Step One Validate',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleRecoverUserInfo: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const data = await processRecoverUserInfo(sub);
+      res.status(200).json({
+        success: true,
+        message: 'user data retrieve successful',
+        data,
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCheckR_Stp2: (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(200).json({
+        status: true,
+        message: 'Step One Validate',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCheckR_Stp3: (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(200).json({
+        status: true,
+        message: 'Step One Validate',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleSentRecoverOtp: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const r_stp1 = req.cookies?.r_stp1;
+      const { r_stp2 } = await processSentRecoverAccountOtp({
+        userId: sub,
+        r_stp1,
+      });
+      res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+      res.cookie('r_stp2', r_stp2, cookieOption(recoverSessionExpiresIn));
+      res.status(200).json({
+        status: 'success',
+        message: 'Recover Otp Send Successful',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleVerifyRecoverOtp: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const r_stp2 = req.cookies?.r_stp2;
+      const { r_stp3 } = await processVerifyOtp({
+        userId: sub,
+        r_stp2,
+      });
+      res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+      res.cookie('r_stp3', r_stp3, cookieOption(recoverSessionExpiresIn));
+      res.status(200).json({
+        status: 'success',
+        message: 'OTP verification successful',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleResendRecoverOtp: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const availableAt = req.availableAt;
+      const { sub } = req.decoded;
+      await processReSentRecoverAccountOtp({ userId: sub });
+      res.status(200).json({
+        status: 'success',
+        message: 'OTP resent successful',
+        data: { availableAt },
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleResetPassword: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { password } = req.body;
+      const { sub } = req.decoded;
+      const r_stp3 = req.cookies?.r_stp3;
+      const { browser, device, location, os, ip } =
+        await getClientMetaData(req);
+      await processResetPassword({
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        userId: sub,
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        password,
+        r_stp3,
+      });
+      res.clearCookie('r_stp1', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp2', cookieOption(recoverSessionExpiresIn));
+      res.clearCookie('r_stp3', cookieOption(recoverSessionExpiresIn));
+      res.status(200).json({
+        status: 'success',
+        message: 'Password Reset Successful',
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
   handleProcessOAuthCallback: async (
     req: Request,
     res: Response,
