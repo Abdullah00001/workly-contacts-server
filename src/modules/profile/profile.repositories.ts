@@ -95,7 +95,6 @@ const ProfileRepositories = {
             $project: query,
           },
         ]);
-
         const { avatar, email, name, phone, dateOfBirth, gender, location } = {
           ...profileData[0],
         } as IGetProfileData;

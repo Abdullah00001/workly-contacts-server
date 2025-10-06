@@ -348,9 +348,9 @@ const UserControllers = {
     next: NextFunction
   ) => {
     try {
-      const { sid, userId } = req.decoded;
+      const { sid, sub } = req.decoded;
       const { accessToken } = await processRefreshToken({
-        userId,
+        userId:sub,
         sid: sid as string,
       });
       res.cookie(
