@@ -25,7 +25,8 @@ const ProfileControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const payload: IProfilePayload = req.body;
       const data = await processUpdateProfile({ ...payload, user: userId });
       res.status(200).json({
