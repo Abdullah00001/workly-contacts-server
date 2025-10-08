@@ -5,7 +5,8 @@ import upload from '@/middlewares/multer.middleware';
 import ProfileMiddlewares from '@/modules/profile/profile.middlewares';
 
 const { checkAccessToken, checkSession } = UserMiddlewares;
-const { profilePictureChangeInputValidation } = ProfileMiddlewares;
+const { profilePictureChangeInputValidation, checkCurrentPassword } =
+  ProfileMiddlewares;
 const {
   handleGetProfile,
   handleUpdateProfile,
@@ -22,7 +23,12 @@ router
   .route('/me')
   .get(checkAccessToken, checkSession, handleGetProfile)
   .patch(checkAccessToken, checkSession, handleUpdateProfile)
-  .post(checkAccessToken, checkSession, handleChangePassword)
+  .post(
+    checkAccessToken,
+    checkSession,
+    checkCurrentPassword,
+    handleChangePassword
+  )
   .delete(checkAccessToken, checkSession, handleDeleteAccount);
 router
   .route('/me/avatar')
