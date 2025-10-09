@@ -20,6 +20,9 @@ import {
   TProcessFindUser,
   TResetPasswordServicePayload,
   IResetPasswordSendEmailPayload,
+  SecurityOverviewData,
+  TProcessActiveSessions,
+  TProcessSessionsRemove,
 } from '@/modules/user/user.interfaces';
 import { generate } from 'otp-generator';
 import redisClient from '@/configs/redis.configs';
@@ -65,6 +68,10 @@ const {
   resetPassword,
   findUserById,
   changePasswordAndAccountActivation,
+  retrieveSecurityOverviewData,
+  recentActivityDataRetrieve,
+  retrieveActivity,
+  retrieveActivityDetails,
 } = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
 const { calculateFutureDate, formatDateTime } = DateUtils;
@@ -916,6 +923,143 @@ const UserServices = {
       } else {
         throw new Error(
           'Unknown Error Occurred In Process Change Password And Account Activation Service'
+        );
+      }
+    }
+  },
+  processSecurityOverview: async (
+    userId: string
+  ): Promise<SecurityOverviewData> => {
+    try {
+      const data = await retrieveSecurityOverviewData(userId);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Security Overview Service'
+        );
+      }
+    }
+  },
+  processActiveSessions: async ({
+    sid,
+    sub,
+  }: TProcessActiveSessions): Promise<TSession[]> => {
+    try {
+      const sessionIds = await redisClient.smembers(`user:${sub}:sessions`);
+      const sessions: TSession[] = await Promise.all(
+        sessionIds.map(async (id) => {
+          if (id === sid) {
+            const currentSessionString = await redisClient.get(
+              `user:${sub}:sessions:${id}`
+            );
+            const currentSession = JSON.parse(currentSessionString as string);
+            return { ...currentSession, currentSession: true };
+          }
+          const otherSessionString = await redisClient.get(
+            `user:${sub}:sessions:${id}`
+          );
+          const otherSession = JSON.parse(otherSessionString as string);
+          return { ...otherSession, currentSession: false };
+        })
+      );
+      return sessions;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Active Sessions Service'
+        );
+      }
+    }
+  },
+  processRecentActivityData: async (user: string) => {
+    try {
+      const data = await recentActivityDataRetrieve(user);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Recent Activity Data Service'
+        );
+      }
+    }
+  },
+  processSessionRemove: async ({
+    sid,
+    sub,
+    sessionId,
+  }: TProcessSessionsRemove) => {
+    try {
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `blacklist:sessions:${sessionId}`,
+        sessionId,
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.srem(`user:${sub}:sessions`, sessionId as string);
+      redisPipeLine.del(`user:${sub}:sessions:${sessionId}`);
+      await redisPipeLine.exec();
+      const currentActiveSids = await redisClient.smembers(
+        `user:${sub}:sessions`
+      );
+      const sessions: TSession[] = await Promise.all(
+        currentActiveSids.map(async (id) => {
+          if (id === sid) {
+            const currentSessionString = await redisClient.get(
+              `user:${sub}:sessions:${id}`
+            );
+            const currentSession = JSON.parse(currentSessionString as string);
+            return { ...currentSession, currentSession: true };
+          }
+          const otherSessionString = await redisClient.get(
+            `user:${sub}:sessions:${id}`
+          );
+          const otherSession = JSON.parse(otherSessionString as string);
+          return { ...otherSession, currentSession: false };
+        })
+      );
+      return sessions;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Remove Session Service'
+        );
+      }
+    }
+  },
+  processRetrieveActivity: async (userId: string) => {
+    try {
+      const data = await retrieveActivity(userId);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Retrieve Activity Service'
+        );
+      }
+    }
+  },
+  processRetrieveActivityDetails: async (userId: string) => {
+    try {
+      const data = await retrieveActivityDetails(userId);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Retrieve Activity Details Service'
         );
       }
     }

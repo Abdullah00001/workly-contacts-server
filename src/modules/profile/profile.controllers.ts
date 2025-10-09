@@ -25,7 +25,8 @@ const ProfileControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const payload: IProfilePayload = req.body;
       const data = await processUpdateProfile({ ...payload, user: userId });
       res.status(200).json({
@@ -77,9 +78,13 @@ const ProfileControllers = {
         password: { secret: password, change_at: new Date().toISOString() },
         user,
       });
-      res
-        .status(200)
-        .json({ status: 'success', message: 'password change successful' });
+      res.status(200).json({
+        status: 'success',
+        message: 'password change successful',
+        data: {
+          change_at: new Date().toISOString(),
+        },
+      });
       return;
     } catch (error) {
       const err = error as Error;

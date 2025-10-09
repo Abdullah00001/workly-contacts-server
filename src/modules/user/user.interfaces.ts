@@ -32,6 +32,8 @@ interface IUser extends Document {
   avatar: IImage;
   provider: AuthType;
   googleId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export type TUpdateUserAccountStatus = {
@@ -50,6 +52,8 @@ export interface IActivity extends Document {
   location: string;
   ipAddress: string;
   user: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface IActivityPayload {
@@ -213,6 +217,7 @@ export type TSession = {
   browser: string;
   os: string;
   location: string;
+  currentSession?: boolean;
 };
 
 export type TProcessVerifyUserArgs = {
@@ -324,6 +329,26 @@ export type TProcessClearDeviceAndLoginPayload = {
 
 export type TProcessFindUser = {
   userId: string;
+};
+
+export type SecurityOverviewData = {
+  accountCreatedAt?: Date;
+  lastPasswordChange?: string;
+  lastLoginBrowser?: string;
+  lastLoginOs?: string;
+  lastLoginLocation?: string;
+  lastLoginTime?: string;
+};
+
+export type TProcessActiveSessions = {
+  sub: string;
+  sid: string;
+};
+
+export type TProcessSessionsRemove = {
+  sub: string;
+  sessionId: string;
+  sid: string;
 };
 
 export default IUser;

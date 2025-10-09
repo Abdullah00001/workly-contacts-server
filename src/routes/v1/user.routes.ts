@@ -55,6 +55,13 @@ const {
   handleRetrieveSessionsForClearDevice,
   handleClearDeviceAndLogin,
   handleRecoverUserInfo,
+  handleSecurityOverview,
+  handleActiveSession,
+  handleRecentActivity,
+  handleSessionRemove,
+  handleForceLogout,
+  handleRetrieveActivity,
+  handleRetrieveActivityDetails,
 } = UserControllers;
 
 const router = Router();
@@ -171,5 +178,33 @@ router
 router
   .route('/auth/recover/reset')
   .patch(checkR_stp3Token, handleResetPassword);
+
+// Account Center
+
+router
+  .route('/auth/security-overview')
+  .get(checkAccessToken, checkSession, handleSecurityOverview);
+
+router
+  .route('/auth/active-sessions')
+  .get(checkAccessToken, checkSession, handleActiveSession);
+
+router
+  .route('/activity')
+  .get(checkAccessToken, checkSession, handleRetrieveActivity);
+
+router
+  .route('/activity/:id')
+  .get(checkAccessToken, checkSession, handleRetrieveActivityDetails);
+
+router
+  .route('/auth/activity/recent')
+  .get(checkAccessToken, checkSession, handleRecentActivity);
+
+router
+  .route('/auth/session-remove')
+  .post(checkAccessToken, checkSession, handleSessionRemove);
+
+router.route('/auth/force-logout').post(handleForceLogout);
 
 export default router;

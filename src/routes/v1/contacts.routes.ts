@@ -3,7 +3,7 @@ import ContactsControllers from '@/modules/contacts/contacts.controllers';
 import UserMiddlewares from '@/modules/user/user.middlewares';
 import { Router } from 'express';
 
-const { checkAccessToken } = UserMiddlewares;
+const { checkAccessToken,checkSession } = UserMiddlewares;
 const {
   handleFindContacts,
   handleFindFavorites,
@@ -34,7 +34,7 @@ router
 router.route('/contacts/empty').delete(checkAccessToken, handleEmptyTrash);
 router
   .route('/contacts')
-  .get(checkAccessToken, handleFindContacts)
+  .get(checkAccessToken,checkSession, handleFindContacts)
   .post(checkAccessToken, handleCreateContact);
 router.route('/search').get(checkAccessToken, handleSearchContact);
 router

@@ -16,6 +16,7 @@ import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import {
   AccountStatus,
   ActivityType,
+  AuthErrorType,
   AuthType,
 } from '@/modules/user/user.enums';
 import { Types } from 'mongoose';
@@ -486,7 +487,7 @@ const UserMiddlewares = {
         res.status(401).json({
           success: false,
           message: 'Unauthorize Request',
-          error: 'Access Token is missing',
+          error: AuthErrorType.TOKEN_EXPIRED,
         });
         return;
       }
@@ -495,7 +496,7 @@ const UserMiddlewares = {
         res.status(401).json({
           success: false,
           message: 'Unauthorize Request',
-          error: 'Accesstoken has been revoked',
+          error: AuthErrorType.SESSION_BLACKLISTED,
         });
         return;
       }
@@ -505,7 +506,7 @@ const UserMiddlewares = {
         res.status(401).json({
           success: false,
           message: 'Unauthorize Request',
-          error: 'Access Token expired or invalid',
+          error: AuthErrorType.TOKEN_INVALID,
         });
         return;
       }
@@ -566,7 +567,7 @@ const UserMiddlewares = {
         res.status(401).json({
           success: false,
           message: 'Unauthorize Request',
-          error: 'Session has expired,Login Required!',
+          error: AuthErrorType.SESSION_BLACKLISTED,
         });
         return;
       }
@@ -621,7 +622,7 @@ const UserMiddlewares = {
         res.status(401).json({
           success: false,
           message: 'Unauthorize Request',
-          error: 'Refresh Token is missing',
+          error: AuthErrorType.TOKEN_EXPIRED,
         });
         return;
       }
@@ -630,18 +631,16 @@ const UserMiddlewares = {
         res.status(401).json({
           success: false,
           message: 'Unauthorize Request',
-          error: 'Refresh Token has been revoked',
+          error: AuthErrorType.TOKEN_BLACKLISTED,
         });
         return;
       }
       const decoded = verifyRefreshToken(token);
       if (!decoded) {
-        res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
-        res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
         res.status(401).json({
           success: false,
           message: 'Unauthorize Request',
-          error: 'Refresh Token expired or invalid',
+          error: AuthErrorType.TOKEN_INVALID,
         });
         return;
       }
