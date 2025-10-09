@@ -46,6 +46,8 @@ const {
   processActiveSessions,
   processRecentActivityData,
   processSessionRemove,
+  processRetrieveActivity,
+  processRetrieveActivityDetails,
 } = UserServices;
 
 const UserControllers = {
@@ -778,6 +780,51 @@ const UserControllers = {
       res
         .status(200)
         .json({ success: true, message: 'Force Logout Successful' });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleRetrieveActivity: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const data = await processRetrieveActivity(sub);
+      res
+        .status(200)
+        .json({ success: true, message: 'Activity Retrieve Successful', data });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleRetrieveActivityDetails: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const {id}=req.params
+      const data = await processRetrieveActivityDetails(id);
+      if (!data) {
+        res.status(404).json({
+          success: false,
+          message: 'Activity Details Not Found',
+        });
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        message: 'Activity Details Retrieve Successful',
+        data,
+      });
       return;
     } catch (error) {
       const err = error as Error;

@@ -60,6 +60,8 @@ const {
   handleRecentActivity,
   handleSessionRemove,
   handleForceLogout,
+  handleRetrieveActivity,
+  handleRetrieveActivityDetails,
 } = UserControllers;
 
 const router = Router();
@@ -186,6 +188,14 @@ router
 router
   .route('/auth/active-sessions')
   .get(checkAccessToken, checkSession, handleActiveSession);
+
+router
+  .route('/activity')
+  .get(checkAccessToken, checkSession, handleRetrieveActivity);
+
+router
+  .route('/activity/:id')
+  .get(checkAccessToken, checkSession, handleRetrieveActivityDetails);
 
 router
   .route('/auth/activity/recent')

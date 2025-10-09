@@ -8,7 +8,7 @@ import {
   TUpdateUserAccountStatus,
 } from '@/modules/user/user.interfaces';
 import User, { Activity } from '@/modules/user/user.models';
-import { startSession } from 'mongoose';
+import mongoose, { startSession } from 'mongoose';
 
 const UserRepositories = {
   findUserById: async (payload: string) => {
@@ -230,6 +230,38 @@ const UserRepositories = {
       } else {
         throw new Error(
           'Unknown Error Occurred In Recent Activity Data Operation'
+        );
+      }
+    }
+  },
+  retrieveActivity: async (userId: string) => {
+    try {
+      const user = new mongoose.Types.ObjectId(userId);
+      const data = await Activity.find(
+        { user },
+        { title: 1, createdAt: 1, location: 1, device: 1 }
+      ).sort({ createdAt: -1 });
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Retrieve Activity Data Operation'
+        );
+      }
+    }
+  },
+  retrieveActivityDetails: async (activityId: string) => {
+    try {
+      const data = await Activity.findById(activityId);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Retrieve Activity Details Operation'
         );
       }
     }

@@ -70,6 +70,8 @@ const {
   changePasswordAndAccountActivation,
   retrieveSecurityOverviewData,
   recentActivityDataRetrieve,
+  retrieveActivity,
+  retrieveActivityDetails,
 } = UserRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
 const { calculateFutureDate, formatDateTime } = DateUtils;
@@ -1030,6 +1032,34 @@ const UserServices = {
       } else {
         throw new Error(
           'Unknown Error Occurred In Process Remove Session Service'
+        );
+      }
+    }
+  },
+  processRetrieveActivity: async (userId: string) => {
+    try {
+      const data = await retrieveActivity(userId);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Retrieve Activity Service'
+        );
+      }
+    }
+  },
+  processRetrieveActivityDetails: async (userId: string) => {
+    try {
+      const data = await retrieveActivityDetails(userId);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Retrieve Activity Details Service'
         );
       }
     }
