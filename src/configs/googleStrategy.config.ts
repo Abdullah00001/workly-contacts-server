@@ -59,6 +59,7 @@ passport.use(
         return done(null, {
           user: createdUser,
           activity: ActivityType.SIGNUP_SUCCESS,
+          provider: AuthType.GOOGLE,
         }); // attaches to req.user
       }
       return done(null, {
