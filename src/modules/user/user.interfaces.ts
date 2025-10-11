@@ -242,6 +242,7 @@ export type TProcessOAuthCallBackPayload = {
   os: string;
   location: string;
   ipAddress: string;
+  provider: AuthType;
 };
 
 export type TProcessLoginPayload = {

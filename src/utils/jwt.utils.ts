@@ -26,7 +26,11 @@ const JwtUtils = {
       throw new Error('Generate RefreshToken Payload Cant Be Null');
     }
     const { rememberMe, sub, sid, provider } = payload;
-    if (rememberMe || provider === AuthType.GOOGLE) {
+    if (
+      rememberMe ||
+      provider === AuthType.GOOGLE ||
+      provider === AuthType.LOCAL
+    ) {
       return jwt.sign({ sub, sid }, env.JWT_REFRESH_TOKEN_SECRET_KEY, {
         expiresIn: refreshTokenExpiresIn,
       });
