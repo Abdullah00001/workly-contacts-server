@@ -568,7 +568,7 @@ const UserControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { user, activity } = req.user as TRequestUser;
+    const { user, activity, provider } = req.user as TRequestUser;
     try {
       const { browser, device, location, os, ip } =
         await getClientMetaData(req);
@@ -580,6 +580,7 @@ const UserControllers = {
         ipAddress: ip,
         location: `${location.city} ${location.country}`,
         os: os.name as string,
+        provider,
       });
       res.cookie(
         'accesstoken',
@@ -811,7 +812,7 @@ const UserControllers = {
     next: NextFunction
   ) => {
     try {
-      const {id}=req.params
+      const { id } = req.params;
       const data = await processRetrieveActivityDetails(id);
       if (!data) {
         res.status(404).json({

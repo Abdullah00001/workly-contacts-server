@@ -252,14 +252,23 @@ const ContactsControllers = {
         return;
       }
       const contactId = new mongoose.Types.ObjectId(id);
-      const { avatar, birthday, email, name, location, phone, worksAt } =
-        req.body;
+      const {
+        avatar,
+        birthday,
+        email,
+        firstName,
+        lastName,
+        location,
+        phone,
+        worksAt,
+      } = req.body;
       const data = await processPatchUpdateOneContact({
         contactId,
         avatar,
         birthday,
         email,
-        name,
+        firstName,
+        lastName,
         location,
         phone,
         worksAt,
@@ -292,15 +301,24 @@ const ContactsControllers = {
         return;
       }
       const contactId = new mongoose.Types.ObjectId(id);
-      const { birthday, email, name, location, phone, worksAt, avatar } =
-        req.body;
+      const {
+        birthday,
+        email,
+        firstName,
+        lastName,
+        location,
+        phone,
+        worksAt,
+        avatar,
+      } = req.body;
       const data = await processPutUpdateOneContact({
         avatarUpload: avatarImage,
         avatar: JSON.parse(avatar),
         contactId,
         birthday: JSON.parse(birthday),
         email,
-        name,
+        firstName,
+        lastName,
         location: JSON.parse(location),
         phone,
         worksAt: JSON.parse(worksAt),

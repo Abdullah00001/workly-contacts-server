@@ -3,7 +3,7 @@ import ContactsControllers from '@/modules/contacts/contacts.controllers';
 import UserMiddlewares from '@/modules/user/user.middlewares';
 import { Router } from 'express';
 
-const { checkAccessToken,checkSession } = UserMiddlewares;
+const { checkAccessToken, checkSession } = UserMiddlewares;
 const {
   handleFindContacts,
   handleFindFavorites,
@@ -27,39 +27,48 @@ const router = Router();
 
 router
   .route('/contacts/recover')
-  .patch(checkAccessToken, handleBulkRecoverTrash);
+  .patch(checkAccessToken, checkSession, handleBulkRecoverTrash);
 router
   .route('/contacts/recover/:id')
-  .patch(checkAccessToken, handleRecoverOneTrash);
-router.route('/contacts/empty').delete(checkAccessToken, handleEmptyTrash);
+  .patch(checkAccessToken, checkSession, handleRecoverOneTrash);
+router
+  .route('/contacts/empty')
+  .delete(checkAccessToken, checkSession, handleEmptyTrash);
 router
   .route('/contacts')
-  .get(checkAccessToken,checkSession, handleFindContacts)
-  .post(checkAccessToken, handleCreateContact);
-router.route('/search').get(checkAccessToken, handleSearchContact);
+  .get(checkAccessToken, checkSession, handleFindContacts)
+  .post(checkAccessToken, checkSession, handleCreateContact);
+router
+  .route('/search')
+  .get(checkAccessToken, checkSession, handleSearchContact);
 router
   .route('/contacts/:id')
-  .get(checkAccessToken, handleFindOneContacts)
+  .get(checkAccessToken, checkSession, handleFindOneContacts)
   .put(
     checkAccessToken,
+    checkSession,
     upload.single('avatarImage'),
     handlePutUpdateOneContact
   )
-  .patch(checkAccessToken, handlePatchUpdateOneContact);
-router.route('/favorites').get(checkAccessToken, handleFindFavorites);
+  .patch(checkAccessToken, checkSession, handlePatchUpdateOneContact);
+router
+  .route('/favorites')
+  .get(checkAccessToken, checkSession, handleFindFavorites);
 router
   .route('/favorites/:id')
-  .patch(checkAccessToken, handleChangeFavoriteStatus);
+  .patch(checkAccessToken, checkSession, handleChangeFavoriteStatus);
 router
   .route('/trash')
-  .get(checkAccessToken, handleFindTrash)
-  .patch(checkAccessToken, handleBulkChangeTrashStatus);
-router.route('/trash/:id').patch(checkAccessToken, handleChangeTrashStatus);
+  .get(checkAccessToken, checkSession, handleFindTrash)
+  .patch(checkAccessToken, checkSession, handleBulkChangeTrashStatus);
+router
+  .route('/trash/:id')
+  .patch(checkAccessToken, checkSession, handleChangeTrashStatus);
 router
   .route('/contacts/delete')
-  .delete(checkAccessToken, handleDeleteManyContact);
+  .delete(checkAccessToken, checkSession, handleDeleteManyContact);
 router
   .route('/contacts/delete/:id')
-  .delete(checkAccessToken, handleDeleteOneContact);
+  .delete(checkAccessToken, checkSession, handleDeleteOneContact);
 
 export default router;

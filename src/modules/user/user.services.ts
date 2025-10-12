@@ -141,6 +141,7 @@ const UserServices = {
       const refreshToken = generateRefreshToken({
         sid,
         sub: user?._id as string,
+        provider: AuthType.LOCAL,
       });
       const session: TSession = {
         browser,
@@ -744,6 +745,7 @@ const UserServices = {
     ipAddress,
     location,
     os,
+    provider,
   }: TProcessOAuthCallBackPayload): Promise<IUserPayload> => {
     try {
       const { _id, name, email } = user;
@@ -755,6 +757,7 @@ const UserServices = {
       const refreshToken = generateRefreshToken({
         sid,
         sub: _id as string,
+        provider,
       });
       const session: TSession = {
         browser,
