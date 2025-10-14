@@ -398,7 +398,7 @@ const ContactsServices = {
       if (cachedContacts) {
         const contacts: IContacts[] = JSON.parse(cachedContacts);
         const filtered = contacts.filter((contact) =>
-          [contact.name, contact.email, contact.phone].some((field) =>
+          [contact.name, contact.email, contact.phone.number].some((field) =>
             regex.test(field)
           )
         );

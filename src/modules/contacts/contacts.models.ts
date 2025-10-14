@@ -2,6 +2,7 @@ import IContacts, {
   IBirthDate,
   IImage,
   ILocation,
+  IPhone,
   IWorksAt,
 } from '@/modules/contacts/contacts.interfaces';
 import { model, Model, Schema } from 'mongoose';
@@ -31,6 +32,14 @@ const WorksAtSchema = new Schema<IWorksAt>(
   { _id: false }
 );
 
+const PhoneSchema = new Schema<IPhone>(
+  {
+    countryCode: { type: String, default: null, index: true },
+    number: { type: String, default: null, index: true },
+  },
+  { _id: false }
+);
+
 const LocationSchema = new Schema<ILocation>(
   {
     city: { type: String, default: null },
@@ -48,7 +57,7 @@ const ContactsSchema = new Schema<IContacts>(
     email: { type: String, default: null, index: true },
     firstName: { type: String, default: null, index: true },
     lastName: { type: String, default: null, index: true },
-    phone: { type: String, default: null, index: true },
+    phone: PhoneSchema,
     isTrashed: { type: Boolean, default: false, index: true },
     isFavorite: { type: Boolean, default: false },
     trashedAt: { type: Date, default: null, index: true },

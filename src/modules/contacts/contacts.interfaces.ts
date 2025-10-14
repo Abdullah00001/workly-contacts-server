@@ -6,6 +6,11 @@ export interface IWorksAt {
   jobTitle: string;
 }
 
+export interface IPhone {
+  countryCode: string;
+  number: string;
+}
+
 export interface ILocation {
   country: string;
   city: string;
@@ -33,7 +38,7 @@ interface IContacts {
   lastName?: string;
   name: string;
   email: string;
-  phone: string;
+  phone: IPhone;
   worksAt: IWorksAt;
   location: ILocation;
   birthday: IBirthDate;
@@ -88,7 +93,7 @@ export interface IUpdateOneContactPayload {
   lastName?: string;
   name?: string;
   email?: string;
-  phone?: string;
+  phone?: IPhone;
   worksAt?: IWorksAt;
   location?: ILocation;
   birthday?: IBirthDate;
@@ -105,7 +110,7 @@ export interface ICreateContactPayload {
   firstName?: string;
   lastName?: string;
   email?: string;
-  phone?: string;
+  phone?: IPhone;
   worksAt?: IWorksAt;
   location?: ILocation;
   birthday?: IBirthDate;

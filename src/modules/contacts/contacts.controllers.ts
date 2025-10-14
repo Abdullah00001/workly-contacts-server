@@ -35,7 +35,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const {
         avatar,
         email,
@@ -341,7 +342,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const data = await processFindContacts({ userId });
       res.setHeader('Cache-Control', 'private max-age:30');
       res.status(200).json({
