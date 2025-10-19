@@ -57,10 +57,12 @@ router
 router
   .route('/favorites/:id')
   .patch(checkAccessToken, checkSession, handleChangeFavoriteStatus);
+// get all trash item and add many in trash endpoint
 router
   .route('/trash')
   .get(checkAccessToken, checkSession, handleFindTrash)
   .patch(checkAccessToken, checkSession, handleBulkChangeTrashStatus);
+// single trash add endpoint
 router
   .route('/trash/:id')
   .patch(checkAccessToken, checkSession, handleChangeTrashStatus);

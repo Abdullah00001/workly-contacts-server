@@ -76,7 +76,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         res.status(400).json({ status: 'error', message: 'Invalid Trash ID' });
@@ -106,7 +107,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         res.status(400).json({ status: 'error', message: 'Invalid Trash ID' });
@@ -134,7 +136,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { contactIds } = req.body;
       await processBulkChangeTrashStatus({ contactIds, userId });
       res.status(200).json({
@@ -152,7 +155,8 @@ const ContactsControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { userId } = req.decoded;
+    const { sub } = req.decoded;
+    const userId = new mongoose.Types.ObjectId(sub);
     const { id } = req.params;
     const oldEtag = req.headers['if-none-match'];
     try {
@@ -165,11 +169,13 @@ const ContactsControllers = {
         contactId,
         userId,
       })) as IContacts;
-      if (!data)
+      if (!data) {
         res.status(404).json({
           success: false,
           message: 'contact not found',
         });
+        return;
+      }
       const eTag = generateEtag(data);
       if (oldEtag !== eTag) {
         res.setHeader('Cache-Control', 'private max-age:30');
@@ -193,7 +199,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         res.status(400).json({ status: 'error', message: 'Invalid Trash ID' });
@@ -221,7 +228,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { contactIds } = req.body;
       const isDeleted = await processDeleteManyContact({ contactIds, userId });
       if (!isDeleted) {
@@ -244,7 +252,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         res
@@ -293,7 +302,8 @@ const ContactsControllers = {
   ) => {
     const avatarImage = req.file?.filename as string;
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         res
@@ -321,7 +331,7 @@ const ContactsControllers = {
         firstName,
         lastName,
         location: JSON.parse(location),
-        phone,
+        phone: JSON.parse(phone),
         worksAt: JSON.parse(worksAt),
         userId,
       });
@@ -364,7 +374,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const data = await processFindFavorites({ userId });
       res.setHeader('Cache-Control', 'private max-age:30');
       res.status(200).json({
@@ -381,7 +392,8 @@ const ContactsControllers = {
   },
   handleFindTrash: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const data = await processFindTrash({ userId });
       res.setHeader('Cache-Control', 'private max-age:30');
       res.status(200).json({
@@ -402,7 +414,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     const { query } = req.query;
-    const { userId } = req.decoded;
+    const { sub } = req.decoded;
+    const userId = new mongoose.Types.ObjectId(sub);
     try {
       const data = await processSearchContact({
         query: query as string,
@@ -425,7 +438,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { contactIds } = req.body;
       await processBulkRecoverTrash({ contactIds, userId });
       res.status(200).json({
@@ -444,7 +458,8 @@ const ContactsControllers = {
     next: NextFunction
   ) => {
     try {
-      const { userId } = req.decoded;
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         res.status(400).json({ status: 'error', message: 'Invalid Trash ID' });
@@ -466,7 +481,8 @@ const ContactsControllers = {
     }
   },
   handleEmptyTrash: async (req: Request, res: Response, next: NextFunction) => {
-    const { userId } = req.decoded;
+    const { sub } = req.decoded;
+    const userId = new mongoose.Types.ObjectId(sub);
     try {
       await processEmptyTrash({ userId });
       res.status(200).json({

@@ -954,6 +954,13 @@ const UserServices = {
       const sessionIds = await redisClient.smembers(`user:${sub}:sessions`);
       const sessions: TSession[] = await Promise.all(
         sessionIds.map(async (id) => {
+          const isSessionExist = await redisClient.exists(
+            `user:${sub}:sessions:${id}`
+          );
+          if (!isSessionExist) {
+            await redisClient.srem(`user:${sub}:sessions`, id as string);
+            return;
+          }
           if (id === sid) {
             const currentSessionString = await redisClient.get(
               `user:${sub}:sessions:${id}`

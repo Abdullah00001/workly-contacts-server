@@ -194,6 +194,8 @@ const ContactsRepositories = {
             isFavorite: 1,
             email: 1,
             phone: 1,
+            location: 1,
+            worksAt: 1,
           },
         },
       ]);
