@@ -243,6 +243,11 @@ const ContactsRepositories = {
           $match: { userId: objectUserId, isTrashed: true },
         },
         {
+          $sort: {
+            trashedAt: -1,
+          },
+        },
+        {
           $project: {
             _id: 1,
             avatar: 1,
