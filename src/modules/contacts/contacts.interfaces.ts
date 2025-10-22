@@ -193,4 +193,34 @@ export type TBulkInsertContacts = {
   contacts: TContactPayload[];
 };
 
+// Type definitions
+export interface CSVContactRow {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  countryCode?: string;
+  birthMonth?: string;
+  birthDate?: string;
+  birthYear?: string;
+  [key: string]: string | undefined;
+}
+
+export interface ContactValidationError {
+  row?: number;
+  card?: number;
+  field: string;
+  message: string;
+}
+
+export interface PhoneValidation {
+  phone?: string;
+  countryCode?: string;
+}
+
+export interface BirthdayValidation {
+  birthMonth?: string;
+  birthDate?: string;
+  birthYear?: string;
+}
+
 export default IContacts;

@@ -1,5 +1,8 @@
 import { BMonth } from '@/modules/contacts/contacts.enums';
 import {
+  BirthdayValidation,
+  CSVContactRow,
+  PhoneValidation,
   TContactPayload,
   TCsvFormat,
 } from '@/modules/contacts/contacts.interfaces';
@@ -353,4 +356,47 @@ export const ExportContactFromVCard = ({
     `Total extracted: ${extractedContacts.length}/${vCardMatches.length}`
   );
   return extractedContacts;
+};
+
+// Validation helper functions
+export const validatePhone = (data: PhoneValidation): string | null => {
+  const { phone, countryCode } = data;
+  
+  // If phone exists, country code must exist
+  if (phone && phone.trim() && (!countryCode || !countryCode.trim())) {
+    return 'Country code is required when phone number is provided';
+  }
+  
+  return null;
+};
+
+export const validateBirthday = (data: BirthdayValidation): string | null => {
+  const { birthMonth, birthDate, birthYear } = data;
+  
+  // Check if any birthday field is provided
+  const hasMonth = birthMonth && birthMonth.trim();
+  const hasDate = birthDate && birthDate.trim();
+  const hasYear = birthYear && birthYear.trim();
+  
+  const providedFields = [hasMonth, hasDate, hasYear].filter(Boolean).length;
+  
+  // If any birthday field is provided
+  if (providedFields > 0) {
+    // Month and date are BOTH required
+    if (!hasMonth || !hasDate) {
+      return 'Both month and date are required for birthday. Year is optional.';
+    }
+  }
+  
+  return null;
+};
+
+export const validateRequiredFields = (data: CSVContactRow): string | null => {
+  if (!data.firstName || !data.firstName.trim()) {
+    return 'firstName is required';
+  }
+  if (!data.lastName || !data.lastName.trim()) {
+    return 'lastName is required';
+  }
+  return null;
 };
