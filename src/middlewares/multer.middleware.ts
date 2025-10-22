@@ -1,3 +1,4 @@
+import { allowedMimeTypes } from '@/const';
 import { Request } from 'express';
 import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
@@ -13,7 +14,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const fileFilter = (
+const imageFileFilter = (
   req: Request,
   file: Express.Multer.File,
   cb: FileFilterCallback
@@ -35,10 +36,14 @@ const fileFilter = (
   }
 };
 
+export const docsUpload = multer({
+  storage: storage,
+});
+
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: fileFilter,
+  fileFilter: imageFileFilter,
 });
 
 export default upload;

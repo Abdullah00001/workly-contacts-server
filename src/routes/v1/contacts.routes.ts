@@ -1,9 +1,11 @@
-import upload from '@/middlewares/multer.middleware';
+import upload, { docsUpload } from '@/middlewares/multer.middleware';
 import ContactsControllers from '@/modules/contacts/contacts.controllers';
+import ContactsMiddlewares from '@/modules/contacts/contacts.middlewares';
 import UserMiddlewares from '@/modules/user/user.middlewares';
 import { Router } from 'express';
 
 const { checkAccessToken, checkSession } = UserMiddlewares;
+const { checkImportFile, checkImportFileContents } = ContactsMiddlewares;
 const {
   handleFindContacts,
   handleFindFavorites,
@@ -21,6 +23,7 @@ const {
   handleBulkRecoverTrash,
   handleRecoverOneTrash,
   handleEmptyTrash,
+  handleImportContact,
 } = ContactsControllers;
 
 const router = Router();
@@ -57,10 +60,12 @@ router
 router
   .route('/favorites/:id')
   .patch(checkAccessToken, checkSession, handleChangeFavoriteStatus);
+// get all trash item and add many in trash endpoint
 router
   .route('/trash')
   .get(checkAccessToken, checkSession, handleFindTrash)
   .patch(checkAccessToken, checkSession, handleBulkChangeTrashStatus);
+// single trash add endpoint
 router
   .route('/trash/:id')
   .patch(checkAccessToken, checkSession, handleChangeTrashStatus);
@@ -70,5 +75,16 @@ router
 router
   .route('/contacts/delete/:id')
   .delete(checkAccessToken, checkSession, handleDeleteOneContact);
+
+router
+  .route('/contacts/import')
+  .post(
+    checkAccessToken,
+    checkSession,
+    docsUpload.single('docsFile'),
+    checkImportFile,
+    checkImportFileContents,
+    handleImportContact
+  );
 
 export default router;

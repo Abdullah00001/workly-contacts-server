@@ -9,6 +9,7 @@ import IContacts, {
   IFindOneContactPayload,
   ISearchContact,
   IUpdateOneContactPayload,
+  TBulkInsertContacts,
 } from '@/modules/contacts/contacts.interfaces';
 import Contacts from '@/modules/contacts/contacts.models';
 import User from '@/modules/user/user.models';
@@ -194,6 +195,8 @@ const ContactsRepositories = {
             isFavorite: 1,
             email: 1,
             phone: 1,
+            location: 1,
+            worksAt: 1,
           },
         },
       ]);
@@ -239,6 +242,11 @@ const ContactsRepositories = {
       return await Contacts.aggregate([
         {
           $match: { userId: objectUserId, isTrashed: true },
+        },
+        {
+          $sort: {
+            trashedAt: -1,
+          },
         },
         {
           $project: {
@@ -330,6 +338,15 @@ const ContactsRepositories = {
     } catch (error) {
       if (error instanceof Error) throw error;
       throw new Error('Unknown Error Occurred In Empty Trash Query');
+    }
+  },
+  bulkInsertContacts: async ({ contacts }: TBulkInsertContacts) => {
+    try {
+      const writContact = await Contacts.insertMany(contacts);
+      return writContact;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error('Unknown Error Occurred In Bulk Insert Contact Query');
     }
   },
 };
