@@ -26,6 +26,7 @@ const {
   processBulkRecoverTrash,
   processRecoverOneTrash,
   processEmptyTrash,
+  processImportContact,
 } = ContactsServices;
 
 const ContactsControllers = {
@@ -489,6 +490,31 @@ const ContactsControllers = {
         success: true,
         message: 'Trash emptied',
       });
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleImportContact: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
+      const file = req.file?.filename;
+      const contacts = await processImportContact({
+        fileName: file as string,
+        userId,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Contact import successful',
+        data: contacts,
+      });
+      return;
     } catch (error) {
       const err = error as Error;
       logger.error(err.message);
