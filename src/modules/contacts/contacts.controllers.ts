@@ -509,13 +509,11 @@ const ContactsControllers = {
         fileName: file as string,
         userId,
       });
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: 'Contact import successful',
-          data: contacts,
-        });
+      res.status(200).json({
+        success: true,
+        message: 'Contact import successful',
+        data: contacts,
+      });
       return;
     } catch (error) {
       const err = error as Error;

@@ -5,7 +5,7 @@ import UserMiddlewares from '@/modules/user/user.middlewares';
 import { Router } from 'express';
 
 const { checkAccessToken, checkSession } = UserMiddlewares;
-const { checkImportFile,checkImportFileContents } = ContactsMiddlewares;
+const { checkImportFile, checkImportFileContents } = ContactsMiddlewares;
 const {
   handleFindContacts,
   handleFindFavorites,

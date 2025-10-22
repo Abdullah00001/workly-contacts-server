@@ -361,25 +361,25 @@ export const ExportContactFromVCard = ({
 // Validation helper functions
 export const validatePhone = (data: PhoneValidation): string | null => {
   const { phone, countryCode } = data;
-  
+
   // If phone exists, country code must exist
   if (phone && phone.trim() && (!countryCode || !countryCode.trim())) {
     return 'Country code is required when phone number is provided';
   }
-  
+
   return null;
 };
 
 export const validateBirthday = (data: BirthdayValidation): string | null => {
   const { birthMonth, birthDate, birthYear } = data;
-  
+
   // Check if any birthday field is provided
   const hasMonth = birthMonth && birthMonth.trim();
   const hasDate = birthDate && birthDate.trim();
   const hasYear = birthYear && birthYear.trim();
-  
+
   const providedFields = [hasMonth, hasDate, hasYear].filter(Boolean).length;
-  
+
   // If any birthday field is provided
   if (providedFields > 0) {
     // Month and date are BOTH required
@@ -387,7 +387,7 @@ export const validateBirthday = (data: BirthdayValidation): string | null => {
       return 'Both month and date are required for birthday. Year is optional.';
     }
   }
-  
+
   return null;
 };
 
