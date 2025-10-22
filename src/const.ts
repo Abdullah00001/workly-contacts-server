@@ -79,3 +79,14 @@ export const AccountActivityMap: Record<
       'Your account has been successfully activated and is now ready for use. If you did not initiate this action, please contact support immediately.',
   },
 };
+
+export const allowedMimeTypes = [
+  'text/csv',
+  'application/vnd.ms-excel',
+  'text/vcard',
+  'text/x-vcard',
+  'text/directory',
+  'application/vcard+json',
+];
+
+export const MAX_IMPORT_FILE_SIZE = 2 * 1024 * 1024;

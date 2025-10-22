@@ -11,12 +11,20 @@ import IContacts, {
   IFindOneContactPayload,
   ISearchContact,
   IUpdateOneContactPayload,
+  TContactPayload,
   TImage,
+  TProcessImportContact,
 } from '@/modules/contacts/contacts.interfaces';
 import ContactsRepositories from '@/modules/contacts/contacts.repositories';
 import CalculationUtils from '@/utils/calculation.utils';
 import { join } from 'path';
 import CloudinaryConfigs from '@/configs/cloudinary.configs';
+import fs from 'fs/promises';
+import {
+  ExportContactFromVCard,
+  ExtractContactsFromCsv,
+  getFileExtension,
+} from '@/utils/import.utils';
 
 const { upload, destroy } = CloudinaryConfigs;
 const {
@@ -35,6 +43,7 @@ const {
   bulkRecoverTrash,
   recoverOneTrash,
   emptyTrash,
+  bulkInsertContacts,
 } = ContactsRepositories;
 const { expiresInTimeUnitToMs } = CalculationUtils;
 
@@ -446,6 +455,33 @@ const ContactsServices = {
         throw error;
       } else {
         throw new Error('Unknown Error Occurred In Process Recover One Trash');
+      }
+    }
+  },
+  processImportContact: async ({ fileName, userId }: TProcessImportContact) => {
+    const filePath = join(__dirname, '../../../public/temp', fileName);
+    const fileExtension = getFileExtension(fileName);
+    try {
+      const fileBuffer = await fs.readFile(filePath);
+      const fileContent = fileBuffer.toString();
+      let extractedContacts: TContactPayload[] = [];
+      if (fileExtension === 'csv') {
+        extractedContacts = ExtractContactsFromCsv({ fileContent, userId });
+      }
+      if (fileExtension === 'vcf') {
+        extractedContacts = ExportContactFromVCard({ fileContent, userId });
+      }
+      const savedContacts = await bulkInsertContacts({
+        contacts: extractedContacts,
+      });
+      await fs.unlink(filePath);
+      return savedContacts;
+    } catch (error) {
+      await fs.unlink(filePath);
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Process Import Service');
       }
     }
   },
