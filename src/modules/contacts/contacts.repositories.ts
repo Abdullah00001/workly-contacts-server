@@ -10,6 +10,7 @@ import IContacts, {
   ISearchContact,
   IUpdateOneContactPayload,
   TBulkInsertContacts,
+  TProcessExportContact,
 } from '@/modules/contacts/contacts.interfaces';
 import Contacts from '@/modules/contacts/contacts.models';
 import User from '@/modules/user/user.models';
@@ -344,6 +345,30 @@ const ContactsRepositories = {
     try {
       const writContact = await Contacts.insertMany(contacts);
       return writContact;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error('Unknown Error Occurred In Bulk Insert Contact Query');
+    }
+  },
+  exportContact: async ({ contactIds, userId }: TProcessExportContact) => {
+    try {
+      const contacts = await Contacts.find(
+        {
+          userId,
+          _id: { $in: contactIds },
+        },
+        {
+          firstName: 1,
+          lastName: 1,
+          location: 1,
+          phone: 1,
+          email: 1,
+          birthday: 1,
+          worksAt: 1,
+          _id: 0,
+        }
+      ).lean();
+      return contacts;
     } catch (error) {
       if (error instanceof Error) throw error;
       throw new Error('Unknown Error Occurred In Bulk Insert Contact Query');
