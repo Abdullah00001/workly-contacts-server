@@ -223,4 +223,9 @@ export interface BirthdayValidation {
   birthYear?: string;
 }
 
+export type TProcessExportContact={
+  userId:Types.ObjectId;
+  contactIds:string[]|Types.ObjectId[]
+}
+
 export default IContacts;

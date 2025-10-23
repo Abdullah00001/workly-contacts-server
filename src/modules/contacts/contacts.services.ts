@@ -11,6 +11,7 @@ import {
   IUpdateOneContactPayload,
   TContactPayload,
   TImage,
+  TProcessExportContact,
   TProcessImportContact,
 } from '@/modules/contacts/contacts.interfaces';
 import ContactsRepositories from '@/modules/contacts/contacts.repositories';
@@ -22,6 +23,7 @@ import {
   ExtractContactsFromCsv,
   getFileExtension,
 } from '@/utils/import.utils';
+import mongoose from 'mongoose';
 
 const { upload, destroy } = CloudinaryConfigs;
 const {
@@ -41,6 +43,7 @@ const {
   recoverOneTrash,
   emptyTrash,
   bulkInsertContacts,
+  exportContact,
 } = ContactsRepositories;
 
 const ContactsServices = {
@@ -372,6 +375,27 @@ const ContactsServices = {
       return savedContacts;
     } catch (error) {
       await fs.unlink(filePath);
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Process Import Service');
+      }
+    }
+  },
+  processExportContact: async ({
+    contactIds,
+    userId,
+  }: TProcessExportContact) => {
+    try {
+      const contactObjectIds = contactIds.map(
+        (id) => new mongoose.Types.ObjectId(id)
+      );
+      const contacts = await exportContact({
+        contactIds: contactObjectIds,
+        userId,
+      });
+      return contacts;
+    } catch (error) {
       if (error instanceof Error) {
         throw error;
       } else {

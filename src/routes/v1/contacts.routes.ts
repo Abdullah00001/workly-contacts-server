@@ -24,6 +24,7 @@ const {
   handleRecoverOneTrash,
   handleEmptyTrash,
   handleImportContact,
+  handleExportContact,
 } = ContactsControllers;
 
 const router = Router();
@@ -86,5 +87,9 @@ router
     checkImportFileContents,
     handleImportContact
   );
+
+router
+  .route('/contacts/export')
+  .post(checkAccessToken, checkSession, handleExportContact);
 
 export default router;

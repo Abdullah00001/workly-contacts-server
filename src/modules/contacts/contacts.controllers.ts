@@ -27,6 +27,7 @@ const {
   processRecoverOneTrash,
   processEmptyTrash,
   processImportContact,
+  processExportContact,
 } = ContactsServices;
 
 const ContactsControllers = {
@@ -512,6 +513,31 @@ const ContactsControllers = {
       res.status(200).json({
         success: true,
         message: 'Contact import successful',
+        data: contacts,
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleExportContact: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
+      const { contactIds } = req.body;
+      const contacts = await processExportContact({
+        contactIds,
+        userId,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Contact export successful',
         data: contacts,
       });
       return;
