@@ -547,6 +547,32 @@ const ContactsControllers = {
       next(error);
     }
   },
+  handleExportSingleContact: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const userId = new mongoose.Types.ObjectId(sub);
+      const { id } = req.params;
+      const contactIds = [new mongoose.Types.ObjectId(id)];
+      const contacts = await processExportContact({
+        contactIds,
+        userId,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Contact export successful',
+        data: contacts,
+      });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
 };
 
 export default ContactsControllers;

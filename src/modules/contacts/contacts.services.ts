@@ -316,7 +316,6 @@ const ContactsServices = {
     }
   },
   processSearchContact: async ({ query, userId }: ISearchContact) => {
-    const regex = new RegExp(query, 'i');
     try {
       return await searchContact({ query, userId });
     } catch (error) {

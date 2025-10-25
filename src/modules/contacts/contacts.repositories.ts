@@ -9,6 +9,8 @@ import IContacts, {
   IFindOneContactPayload,
   ISearchContact,
   IUpdateOneContactPayload,
+  MatchCondition,
+  QueryType,
   TBulkInsertContacts,
   TProcessExportContact,
 } from '@/modules/contacts/contacts.interfaces';
@@ -226,6 +228,8 @@ const ContactsRepositories = {
             isFavorite: 1,
             email: 1,
             phone: 1,
+            location: 1,
+            worksAt: 1,
           },
         },
       ]);
@@ -269,15 +273,71 @@ const ContactsRepositories = {
     }
   },
   searchContact: async ({ query, userId }: ISearchContact) => {
-    const regex = new RegExp(query, 'i');
     const objectUserId = new mongoose.Types.ObjectId(userId);
+    const escapeRegex = (str: string) => {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+    // Detect query type
+    const detectQueryType = (q: string): QueryType => {
+      if (q.includes('@')) return 'email';
+      if (/^[\d\+\-\s()]+$/.test(q)) return 'phone';
+      return 'name';
+    };
+    const queryType = detectQueryType(query);
+    const escapedQuery = escapeRegex(query);
+    // Split query into words and create regex for each
+    const words = query.trim().split(/\s+/);
+    const regexArray = words.map((word) => new RegExp(escapeRegex(word), 'i'));
     try {
+      const orConditions: MatchCondition[] = [];
+
+      // Build conditions based on query type
+      if (queryType === 'email') {
+        orConditions.push({ email: new RegExp(`^${escapedQuery}$`, 'i') });
+      } else if (queryType === 'phone') {
+        orConditions.push(
+          { 'phone.number': new RegExp(escapedQuery, 'i') },
+          { 'phone.number': new RegExp(query.replace(/\D/g, ''), 'i') }
+        );
+      } else {
+        // Name search
+        const words = query.trim().split(/\s+/);
+
+        // Match individual name fields
+        orConditions.push(
+          { firstName: new RegExp(escapedQuery, 'i') },
+          { lastName: new RegExp(escapedQuery, 'i') }
+        );
+
+        // For multi-word queries, add full name matching
+        if (words.length > 1) {
+          const nameConditions: MatchCondition[] = words.map((word) => ({
+            fullName: new RegExp(escapeRegex(word), 'i'),
+          }));
+          orConditions.push({ $and: nameConditions });
+        }
+      }
       return await Contacts.aggregate([
         {
           $match: {
             userId: objectUserId,
             isTrashed: false,
-            $or: [{ name: regex }, { email: regex }, { phone: regex }],
+          },
+        },
+        {
+          $addFields: {
+            fullName: {
+              $concat: [
+                { $ifNull: ['$firstName', ''] },
+                ' ',
+                { $ifNull: ['$lastName', ''] },
+              ],
+            },
+          },
+        },
+        {
+          $match: {
+            $or: orConditions,
           },
         },
         {
