@@ -10,10 +10,10 @@ const FeedbackControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { email } = req.decoded;
+    const { sub } = req.decoded;
     const { message } = req.body;
     try {
-      await processCreateFeedBack({ userEmail: email, message });
+      await processCreateFeedBack({ userId: sub, message });
       res
         .status(201)
         .json({ status: 'success', message: 'Feedback Submitted' });
