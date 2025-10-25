@@ -7,4 +7,21 @@ interface ILabel extends Document {
   updatedAt: string;
 }
 
-export default ILabel
+export type TCreateLabel = {
+  userId: Types.ObjectId;
+  labelName: string;
+};
+
+export type TUpdateLabel = {
+  userId: Types.ObjectId;
+  labelName: string;
+  labelId: Types.ObjectId;
+};
+
+export type TDeleteLabel = {
+  userId: Types.ObjectId;
+  labelId: Types.ObjectId;
+  withContacts: boolean;
+};
+
+export default ILabel;
