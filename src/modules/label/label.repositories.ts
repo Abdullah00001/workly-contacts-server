@@ -78,7 +78,6 @@ const LabelRepositories = {
       );
       await session.commitTransaction();
       session.endSession();
-      return { success: true, message: 'Label deleted successfully' };
     } catch (error) {
       await session.abortTransaction();
       session.endSession();

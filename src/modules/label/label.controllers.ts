@@ -3,7 +3,12 @@ import logger from '@/configs/logger.configs';
 import LabelServices from '@/modules/label/label.services';
 import mongoose from 'mongoose';
 
-const { processCreateLabel, processUpdateLabel } = LabelServices;
+const {
+  processCreateLabel,
+  processUpdateLabel,
+  processDeleteLabel,
+  processRetrieveLabels,
+} = LabelServices;
 
 const LabelControllers = {
   handleCreateLabel: async (
@@ -27,6 +32,25 @@ const LabelControllers = {
       next(error);
     }
   },
+  handleRetrieveLabels: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const data = await processRetrieveLabels(
+        new mongoose.Types.ObjectId(sub)
+      );
+      res
+        .status(200)
+        .json({ success: true, message: 'all label retrieved', data });
+      return;
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
   handleUpdateLabel: async (
     req: Request,
     res: Response,
@@ -42,6 +66,27 @@ const LabelControllers = {
         labelId: new mongoose.Types.ObjectId(id),
       });
       res.status(200).json({ success: true, message: 'label updated', data });
+      return;
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+  handleDeleteLabel: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { id } = req.params;
+      const { sub } = req.decoded;
+      const { withContacts } = req.query;
+      await processDeleteLabel({
+        withContacts: withContacts === 'true',
+        userId: new mongoose.Types.ObjectId(sub),
+        labelId: new mongoose.Types.ObjectId(id),
+      });
+      res.status(200).json({ success: true, message: 'label deleted' });
       return;
     } catch (error) {
       logger.error(error);
