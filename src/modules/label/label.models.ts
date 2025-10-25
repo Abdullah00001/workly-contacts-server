@@ -9,6 +9,6 @@ const LabelSchema = new Schema<ILabel>(
   { timestamps: true }
 );
 
-const Label: Model<ILabel> = model<ILabel>('User', LabelSchema);
+const Label: Model<ILabel> = model<ILabel>('Label', LabelSchema);
 
 export default Label;
