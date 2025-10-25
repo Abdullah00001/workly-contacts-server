@@ -120,11 +120,20 @@ const parsePhoneNumber = (
 ): { countryCode: string | null; number: string | null } => {
   if (!tel) return { countryCode: null, number: null };
 
-  const phoneMatch = tel.match(/^(\+\d{1,4})(\d+)$/);
+  let phoneMatch = tel.match(/^(\+\d{1,3})(\d+)$/);
   if (phoneMatch) {
     return {
       countryCode: phoneMatch[1],
-      number: phoneMatch[2],
+      number: tel,
+    };
+  }
+
+  phoneMatch = tel.match(/^(\+\d{1,3}-\d{1,3})(\d+)$/);
+
+  if (phoneMatch) {
+    return {
+      countryCode: phoneMatch[1],
+      number: tel,
     };
   }
 
@@ -309,7 +318,7 @@ export const ExportContactFromVCard = ({
 
       const { firstName, lastName, email, tel, bday, adr, org, title } =
         parsedFields;
-
+      console.log(tel);
       // Parse phone number
       const { countryCode, number } = parsePhoneNumber(tel);
 

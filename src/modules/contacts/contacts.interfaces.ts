@@ -223,9 +223,15 @@ export interface BirthdayValidation {
   birthYear?: string;
 }
 
-export type TProcessExportContact={
-  userId:Types.ObjectId;
-  contactIds:string[]|Types.ObjectId[]
+export type TProcessExportContact = {
+  userId: Types.ObjectId;
+  contactIds: string[] | Types.ObjectId[];
+};
+
+export type QueryType = 'email' | 'phone' | 'name';
+
+export interface MatchCondition {
+  [key: string]: any;
 }
 
 export default IContacts;

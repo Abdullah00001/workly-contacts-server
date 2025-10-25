@@ -1,14 +1,23 @@
 import mailTransporter from '@/configs/nodemailer.configs';
 import { env } from '@/env';
-import IFeedBack from '@/modules/feedback/feedback.interfaces';
+import IFeedBack, {
+  TProcessCreateFeedBack,
+} from '@/modules/feedback/feedback.interfaces';
 import FeedbackRepositories from '@/modules/feedback/feedback.repositories';
+import UserRepositories from '@/modules/user/user.repositories';
 
 const { createFeedBack } = FeedbackRepositories;
+const { findUserById } = UserRepositories;
 const { SMTP_USER } = env;
 
 const FeedbackServices = {
-  processCreateFeedBack: async (payload: IFeedBack) => {
+  processCreateFeedBack: async ({
+    message,
+    userId,
+  }: TProcessCreateFeedBack) => {
     try {
+      const { email } = await findUserById(userId);
+      const payload = { userEmail: email, message };
       await createFeedBack(payload);
       await mailTransporter.sendMail({
         from: SMTP_USER,
