@@ -70,6 +70,11 @@ const ContactsSchema = new Schema<IContacts>(
     location: { type: LocationSchema, default: () => ({}) },
     worksAt: { type: WorksAtSchema, default: () => ({}) },
     linkedUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    labels: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'Label' }],
+      default: [],
+      index: true,
+    },
   },
   { timestamps: true }
 );

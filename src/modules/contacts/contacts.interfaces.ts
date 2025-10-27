@@ -36,6 +36,7 @@ interface IContacts {
   avatar: IImage;
   firstName?: string;
   lastName?: string;
+  labels: Types.ObjectId[];
   name: string;
   email: string;
   phone: IPhone;
@@ -233,5 +234,15 @@ export type QueryType = 'email' | 'phone' | 'name';
 export interface MatchCondition {
   [key: string]: any;
 }
+
+export type TLabelLeaf = {
+  contactId: Types.ObjectId;
+  labelIds: Types.ObjectId[];
+};
+
+export type TAddLabel = {
+  labelUpdateTree: TLabelLeaf[];
+  userId: Types.ObjectId;
+};
 
 export default IContacts;

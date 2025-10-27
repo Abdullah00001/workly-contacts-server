@@ -11,12 +11,14 @@ import IContacts, {
   IUpdateOneContactPayload,
   MatchCondition,
   QueryType,
+  TAddLabel,
   TBulkInsertContacts,
   TProcessExportContact,
 } from '@/modules/contacts/contacts.interfaces';
 import Contacts from '@/modules/contacts/contacts.models';
+import Label from '@/modules/label/label.models';
 import User from '@/modules/user/user.models';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 
 const ContactsRepositories = {
   createContact: async ({
@@ -200,8 +202,19 @@ const ContactsRepositories = {
             phone: 1,
             location: 1,
             worksAt: 1,
+            labels: 1,
           },
         },
+        {
+          $addFields: {
+            sortKey: {
+              $toLower: {
+                $ifNull: ['$firstName', '$lastName'],
+              },
+            },
+          },
+        },
+        { $sort: { sortKey: 1 } },
       ]);
     } catch (error) {
       if (error instanceof Error) {
@@ -230,8 +243,19 @@ const ContactsRepositories = {
             phone: 1,
             location: 1,
             worksAt: 1,
+            labels: 1,
           },
         },
+        {
+          $addFields: {
+            sortKey: {
+              $toLower: {
+                $ifNull: ['$firstName', '$lastName'],
+              },
+            },
+          },
+        },
+        { $sort: { sortKey: 1 } },
       ]);
     } catch (error) {
       if (error instanceof Error) {
@@ -432,6 +456,85 @@ const ContactsRepositories = {
     } catch (error) {
       if (error instanceof Error) throw error;
       throw new Error('Unknown Error Occurred In Bulk Insert Contact Query');
+    }
+  },
+  addLabelToContacts: async ({ labelUpdateTree, userId }: TAddLabel) => {
+    try {
+      const bulkOps = labelUpdateTree.map(({ contactId, labelIds }) => ({
+        updateOne: {
+          filter: { _id: contactId, userId },
+          update: { $set: { labels: labelIds } },
+        },
+      }));
+      await Contacts.bulkWrite(bulkOps);
+      return;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error(
+        'Unknown Error Occurred In Bulk Add Label To Contact Query'
+      );
+    }
+  },
+  findContactsByLabel: async ({
+    labelId,
+    userId,
+  }: {
+    labelId: Types.ObjectId;
+    userId: Types.ObjectId;
+  }) => {
+    try {
+      const result = await Label.aggregate([
+        { $match: { _id: new Types.ObjectId(labelId), createdBy: userId } }, // match label created by user
+        {
+          $lookup: {
+            from: 'contacts', // MongoDB collection name
+            let: { labelId: '$_id', creatorId: '$createdBy' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $in: ['$$labelId', '$labels'] }, // contact has this label
+                      { $eq: ['$userId', '$$creatorId'] }, // contact belongs to same user
+                      { $eq: ['$isTrashed', false] }, // only non-trashed contacts
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'labelContacts',
+          },
+        },
+        {
+          $set: {
+            labelContacts: {
+              $sortArray: {
+                input: '$labelContacts',
+                sortBy: {
+                  firstName: 1,
+                  lastName: 1,
+                },
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            labelName: 1, // label name
+            labelContacts: 1, // contacts array
+          },
+        },
+      ]);
+
+      return (
+        result[0] || { _id: labelId, name: '', color: '', labelContacts: [] }
+      );
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error(
+        'Unknown Error Occurred In Bulk Add Label To Contact Query'
+      );
     }
   },
 };

@@ -23,7 +23,7 @@ import {
   ExtractContactsFromCsv,
   getFileExtension,
 } from '@/utils/import.utils';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 
 const { upload, destroy } = CloudinaryConfigs;
 const {
@@ -44,6 +44,8 @@ const {
   emptyTrash,
   bulkInsertContacts,
   exportContact,
+  addLabelToContacts,
+  findContactsByLabel,
 } = ContactsRepositories;
 
 const ContactsServices = {
@@ -399,6 +401,59 @@ const ContactsServices = {
         throw error;
       } else {
         throw new Error('Unknown Error Occurred In Process Import Service');
+      }
+    }
+  },
+  processAddLabelToContacts: async ({
+    labelUpdateTree,
+    userId,
+  }: {
+    labelUpdateTree: {
+      contactId: string;
+      labelIds: string[];
+    }[];
+    userId: string;
+  }) => {
+    try {
+      const typedPayload = labelUpdateTree.map(({ contactId, labelIds }) => ({
+        contactId: new mongoose.Types.ObjectId(contactId),
+        labelIds: labelIds.map((item) => new mongoose.Types.ObjectId(item)),
+      }));
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+      await addLabelToContacts({
+        labelUpdateTree: typedPayload,
+        userId: userObjectId,
+      });
+      return;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Add Label To Contacts Service'
+        );
+      }
+    }
+  },
+  processFindContactsByLabel: async ({
+    labelId,
+    userId,
+  }: {
+    labelId: Types.ObjectId;
+    userId: Types.ObjectId;
+  }) => {
+    try {
+      return await findContactsByLabel({
+        labelId,
+        userId,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(
+          'Unknown Error Occurred In Process Find Contacts By Label Service'
+        );
       }
     }
   },
