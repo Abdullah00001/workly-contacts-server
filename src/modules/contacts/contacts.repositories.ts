@@ -205,6 +205,16 @@ const ContactsRepositories = {
             labels: 1,
           },
         },
+        {
+          $addFields: {
+            sortKey: {
+              $toLower: {
+                $ifNull: ['$firstName', '$lastName'],
+              },
+            },
+          },
+        },
+        { $sort: { sortKey: 1 } },
       ]);
     } catch (error) {
       if (error instanceof Error) {
@@ -236,6 +246,16 @@ const ContactsRepositories = {
             labels: 1,
           },
         },
+        {
+          $addFields: {
+            sortKey: {
+              $toLower: {
+                $ifNull: ['$firstName', '$lastName'],
+              },
+            },
+          },
+        },
+        { $sort: { sortKey: 1 } },
       ]);
     } catch (error) {
       if (error instanceof Error) {
@@ -483,6 +503,19 @@ const ContactsRepositories = {
               },
             ],
             as: 'labelContacts',
+          },
+        },
+        {
+          $set: {
+            labelContacts: {
+              $sortArray: {
+                input: '$labelContacts',
+                sortBy: {
+                  firstName: 1,
+                  lastName: 1,
+                },
+              },
+            },
           },
         },
         {
