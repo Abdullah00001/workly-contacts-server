@@ -26,9 +26,15 @@ const {
   handleImportContact,
   handleExportContact,
   handleExportSingleContact,
+  handleUpdateLabel,
+  handleFindContactsByLabel,
 } = ContactsControllers;
 
 const router = Router();
+
+router
+  .route('/contacts/label')
+  .patch(checkAccessToken, checkSession, handleUpdateLabel);
 
 router
   .route('/contacts/recover')
@@ -96,5 +102,9 @@ router
 router
   .route('/contacts/export/:id')
   .get(checkAccessToken, checkSession, handleExportSingleContact);
+
+router
+  .route('/contacts/label/:id')
+  .get(checkAccessToken, checkSession, handleFindContactsByLabel);
 
 export default router;

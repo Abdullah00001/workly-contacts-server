@@ -28,6 +28,8 @@ const {
   processEmptyTrash,
   processImportContact,
   processExportContact,
+  processAddLabelToContacts,
+  processFindContactsByLabel,
 } = ContactsServices;
 
 const ContactsControllers = {
@@ -566,6 +568,45 @@ const ContactsControllers = {
         message: 'Contact export successful',
         data: contacts,
       });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleUpdateLabel: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const { labelUpdateTree } = req.body;
+      await processAddLabelToContacts({ labelUpdateTree, userId: sub });
+      res.status(200).json({ success: true, message: 'contact label updated' });
+      return;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleFindContactsByLabel: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { sub } = req.decoded;
+      const { id } = req.params;
+      const data = await processFindContactsByLabel({
+        labelId: new mongoose.Types.ObjectId(id),
+        userId: new mongoose.Types.ObjectId(sub),
+      });
+      res
+        .status(200)
+        .json({ success: true, message: 'contacts retried', data });
       return;
     } catch (error) {
       const err = error as Error;

@@ -36,8 +36,19 @@ const LabelRepositories = {
         {
           $lookup: {
             from: 'contacts',
-            localField: '_id',
-            foreignField: 'labels',
+            let: { labelId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $in: ['$$labelId', '$labels'] },
+                      { $eq: ['$isTrashed', false] },
+                    ],
+                  },
+                },
+              },
+            ],
             as: 'contacts',
           },
         },
@@ -49,7 +60,7 @@ const LabelRepositories = {
             contactCount: { $size: '$contacts' },
           },
         },
-        { $sort: { createdAt: -1 } },
+        
       ]);
 
       return labels;
@@ -65,7 +76,7 @@ const LabelRepositories = {
       if (withContacts) {
         await Contacts.deleteMany({
           labels: labelId,
-          createdBy: userId,
+          userId,
         }).session(session);
       } else {
         await Contacts.updateMany(
@@ -83,6 +94,21 @@ const LabelRepositories = {
       session.endSession();
       if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred in label delete query');
+    }
+  },
+  findSingleLabel: async ({
+    createdBy,
+    labelId,
+  }: {
+    labelId: Types.ObjectId;
+    createdBy: Types.ObjectId;
+  }) => {
+    try {
+      const label = await Label.findOne({ createdBy, _id: labelId });
+      return label;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error('Unknown error occurred in find single label query');
     }
   },
 };

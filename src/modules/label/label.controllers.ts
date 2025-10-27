@@ -8,6 +8,7 @@ const {
   processUpdateLabel,
   processDeleteLabel,
   processRetrieveLabels,
+  processRetrieveSingleLabel,
 } = LabelServices;
 
 const LabelControllers = {
@@ -81,12 +82,32 @@ const LabelControllers = {
       const { id } = req.params;
       const { sub } = req.decoded;
       const { withContacts } = req.query;
+      console.log(withContacts)
       await processDeleteLabel({
         withContacts: withContacts === 'true',
         userId: new mongoose.Types.ObjectId(sub),
         labelId: new mongoose.Types.ObjectId(id),
       });
       res.status(200).json({ success: true, message: 'label deleted' });
+      return;
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+  handleRetrieveSingleLabel: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { id } = req.params;
+      const { sub } = req.decoded;
+      const data = await processRetrieveSingleLabel({
+        createdBy: new mongoose.Types.ObjectId(sub),
+        labelId: new mongoose.Types.ObjectId(id),
+      });
+      res.status(200).json({ success: true, message: 'label retrieved', data });
       return;
     } catch (error) {
       logger.error(error);

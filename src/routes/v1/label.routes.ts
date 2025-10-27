@@ -7,6 +7,7 @@ const {
   handleUpdateLabel,
   handleDeleteLabel,
   handleRetrieveLabels,
+  handleRetrieveSingleLabel,
 } = LabelControllers;
 const { checkAccessToken, checkSession } = UserMiddlewares;
 
@@ -18,6 +19,7 @@ router
   .get(checkAccessToken, checkSession, handleRetrieveLabels);
 router
   .route('/label/:id')
+  .get(checkAccessToken, checkSession, handleRetrieveSingleLabel)
   .patch(checkAccessToken, checkSession, handleUpdateLabel)
   .delete(checkAccessToken, checkSession, handleDeleteLabel);
 

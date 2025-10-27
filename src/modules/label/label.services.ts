@@ -6,7 +6,8 @@ import {
 import LabelRepositories from '@/modules/label/label.repositories';
 import { Types } from 'mongoose';
 
-const { createLabel, deleteLabel, getLabels, updateLabel } = LabelRepositories;
+const { createLabel, deleteLabel, getLabels, updateLabel, findSingleLabel } =
+  LabelRepositories;
 
 const LabelServices = {
   processCreateLabel: async (payload: TCreateLabel) => {
@@ -40,6 +41,25 @@ const LabelServices = {
     } catch (error) {
       if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred in delete label service');
+    }
+  },
+  processRetrieveSingleLabel: async ({
+    createdBy,
+    labelId,
+  }: {
+    labelId: Types.ObjectId;
+    createdBy: Types.ObjectId;
+  }) => {
+    try {
+      return await findSingleLabel({
+        createdBy,
+        labelId,
+      });
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error(
+        'Unknown error occurred in retrieve single label service'
+      );
     }
   },
 };
