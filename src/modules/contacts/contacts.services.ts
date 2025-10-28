@@ -260,6 +260,10 @@ const ContactsServices = {
       const { deletedContactCount, deletedContacts } = await deleteManyContact({
         contactIds,
       });
+      const avatarPublicIds = deletedContacts.map(
+        (item) => item?.avatar?.publicId
+      );
+      await Promise.all(avatarPublicIds.map((item) => destroy(item)));
       return { deletedContactCount, deletedContacts };
     } catch (error) {
       if (error instanceof Error) {
@@ -276,6 +280,8 @@ const ContactsServices = {
       const { contacts, deletedCount } = await emptyTrash({ userId });
       if (!deletedCount && contacts.length === 0)
         throw new Error('Empty Trash Operation Failed');
+      const avatarPublicIds = contacts.map((item) => item?.avatar?.publicId);
+      await Promise.all(avatarPublicIds.map((item) => destroy(item)));
     } catch (error) {
       if (error instanceof Error) throw error;
       throw new Error('Unknown Error Occurred In Empty Trash Service');

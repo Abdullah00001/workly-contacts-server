@@ -171,13 +171,22 @@ const ContactsRepositories = {
     }
   },
   deleteManyContact: async ({ contactIds }: IDeleteManyContactPayload) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-      const [deletedContacts, deletedContactCount] = await Promise.all([
-        Contacts.find({ _id: { $in: contactIds } }, { avatar: 1 }),
-        (await Contacts.deleteMany({ _id: { $in: contactIds } })).deletedCount,
-      ]);
-      return { deletedContacts, deletedContactCount };
+      const deletedContacts = await Contacts.find(
+        { _id: { $in: contactIds } },
+        { avatar: 1 }
+      ).session(session);
+      const result = await Contacts.deleteMany({
+        _id: { $in: contactIds },
+      }).session(session);
+      await session.commitTransaction();
+      session.endSession();
+      return { deletedContacts, deletedContactCount: result.deletedCount };
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       if (error instanceof Error) {
         throw error;
       } else {
@@ -414,13 +423,22 @@ const ContactsRepositories = {
     }
   },
   emptyTrash: async ({ userId }: IDeleteManyContactPayload) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-      const [contacts, deleteResponse] = await Promise.all([
-        Contacts.find({ userId, isTrashed: true }),
-        Contacts.deleteMany({ userId, isTrashed: true }),
-      ]);
+      const contacts = await Contacts.find({ userId, isTrashed: true }).session(
+        session
+      );
+      const deleteResponse = await Contacts.deleteMany({
+        userId,
+        isTrashed: true,
+      }).session(session);
+      await session.commitTransaction();
+      session.endSession();
       return { contacts, deletedCount: deleteResponse.deletedCount };
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       if (error instanceof Error) throw error;
       throw new Error('Unknown Error Occurred In Empty Trash Query');
     }
