@@ -893,6 +893,8 @@ const UserServices = {
       });
       const pipeline = redisClient.pipeline();
       pipeline.del(`user:activation:uuid:${uuid}`);
+      pipeline.del(`blacklist:ip:${ipAddress}`);
+      redisClient.del(`user:login:attempts:${user?.email}`);
       pipeline.set(
         `blacklist:jwt:${token}`,
         token,

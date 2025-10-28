@@ -622,7 +622,7 @@ const UserControllers = {
         token,
         cookieOption(changePasswordPageTokenExpiresIn)
       );
-      res.redirect(`${CLIENT_BASE_URL}/activation/change/${uuid}`);
+      res.redirect(`${CLIENT_BASE_URL}/auth/unlock/change/${uuid}`);
     } catch (error) {
       const err = error as Error;
       logger.error(err.message);
