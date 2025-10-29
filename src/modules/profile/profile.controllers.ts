@@ -3,6 +3,7 @@ import { accessTokenExpiresIn, refreshTokenExpiresIn } from '@/const';
 import { IProfilePayload } from '@/modules/profile/profile.interfaces';
 import ProfileServices from '@/modules/profile/profile.services';
 import CookieUtils from '@/utils/cookie.utils';
+import ExtractMetaData from '@/utils/metaData.utils';
 import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
 
@@ -15,6 +16,8 @@ const {
   processAvatarRemove,
   processAvatarChange,
 } = ProfileServices;
+
+const { getRealIP, getClientMetaData } = ExtractMetaData;
 
 const { cookieOption } = CookieUtils;
 
@@ -97,10 +100,23 @@ const ProfileControllers = {
     res: Response,
     next: NextFunction
   ) => {
-    const { sub } = req.decoded;
+    const { sub, sid } = req.decoded;
+    const accessToken = req.cookies.accesstoken;
+    const refreshToken = req.cookies.refreshtoken;
+    const { browser, device, location, os, ip } = await getClientMetaData(req);
     const user = new mongoose.Types.ObjectId(sub);
     try {
-      await processDeleteAccount({ user });
+      await processDeleteAccount({
+        accessToken,
+        browser: browser.name as string,
+        deviceType: device.type || 'desktop',
+        ipAddress: ip,
+        location: `${location.city} ${location.country}`,
+        os: os.name as string,
+        refreshToken,
+        user,
+        sid: sid as string,
+      });
       res.clearCookie('accesstoken', cookieOption(accessTokenExpiresIn));
       res.clearCookie('refreshtoken', cookieOption(refreshTokenExpiresIn));
       res

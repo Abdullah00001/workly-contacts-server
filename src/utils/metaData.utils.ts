@@ -1,12 +1,17 @@
+import redisClient from '@/configs/redis.configs';
 import { getLocationFromIP } from '@/const';
 import { env } from '@/env';
+import { IAccountDeletionMetaData } from '@/modules/profile/profile.interfaces';
 import {
   IGeoLocation,
   IGetClientMetaData,
   TGeoLocation,
 } from '@/modules/user/user.interfaces';
+import CalculationUtils from '@/utils/calculation.utils';
 import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
+
+const { calculateMilliseconds } = CalculationUtils;
 
 const ExtractMetaData = {
   getRealIP: (req: Request): string => {
@@ -131,6 +136,20 @@ const ExtractMetaData = {
       if (error instanceof Error) throw error;
       else throw new Error('Unknown Error Occurred In Extract Meta Data');
     }
+  },
+  setAccountDeletionMetaData: async ({
+    deleteAt,
+    jobId,
+    scheduleAt,
+    userId,
+  }: IAccountDeletionMetaData) => {
+    await redisClient.set(
+      `user:${userId}:delete-meta`,
+      JSON.stringify({ deleteAt, jobId, scheduleAt }),
+      'PX',
+      calculateMilliseconds(7, 'days')
+    );
+    return;
   },
 };
 

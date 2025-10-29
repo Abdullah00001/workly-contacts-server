@@ -1,5 +1,6 @@
 import { ILoginEmailPayload } from '@/interfaces/securityEmail.interfaces';
 import { IVerificationEmailData } from '@/interfaces/verificationEmailData.interfaces';
+import { TAccountDeletionScheduleEmailPayload } from '@/modules/profile/profile.interfaces';
 import {
   IResetPasswordSendEmailPayload,
   TAccountLockedEmailPayload,
@@ -79,6 +80,19 @@ const EmailQueueJobs = {
       removeOnComplete: true,
       backoff: { type: 'exponential', delay: 3000 },
     });
+  },
+  addAccountScheduleDeletionNotificationToQueue: async (
+    data: TAccountDeletionScheduleEmailPayload
+  ) => {
+    await EmailQueue.add(
+      'send-account-schedule-deletion-notification-email',
+      data,
+      {
+        attempts: 3,
+        removeOnComplete: true,
+        backoff: { type: 'exponential', delay: 3000 },
+      }
+    );
   },
 };
 

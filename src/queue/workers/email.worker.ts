@@ -27,6 +27,8 @@ import signupSuccessEmailTemplate from '@/templates/signupSuccessEmailTemplate';
 import loginSuccessEmailTemplate from '@/templates/loginSuccessEmailTemplate';
 import { accountLockedEmailTemplate } from '@/templates/accountLockedEmailTemplate';
 import { accountUnlockedEmailTemplate } from '@/templates/accountUnLockedEmailTemplate';
+import { TAccountDeletionScheduleEmailPayload } from '@/modules/profile/profile.interfaces';
+import accountDeletionScheduleEmailTemplate from '@/templates/accountDeletationScheduleEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 
@@ -157,6 +159,23 @@ const worker = new Worker(
           mailOption(
             email,
             'Your workly-contact account is now active',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
+      if (name === 'send-account-schedule-deletion-notification-email') {
+        const { name, deleteAt, scheduleAt, email } =
+          data as TAccountDeletionScheduleEmailPayload;
+        const templateData = { name, deleteAt, scheduleAt, email };
+        const template = Handlebars.compile(
+          accountDeletionScheduleEmailTemplate
+        );
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'Your Workly Contacts account is scheduled for deletion',
             personalizedTemplate
           )
         );

@@ -56,6 +56,12 @@ export interface IActivity extends Document {
   updatedAt: Date;
 }
 
+export interface IAccountDeletionJobPayload {
+  userId: Types.ObjectId;
+  scheduleAt: string;
+  deleteAt: string;
+}
+
 export interface IActivityPayload {
   activityType: ActivityType;
   title: string;

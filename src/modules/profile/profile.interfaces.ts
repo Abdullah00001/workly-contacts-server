@@ -92,4 +92,30 @@ export interface IProcessAvatarRemove {
   publicId: string;
 }
 
+export type TProcessDeleteAccount = {
+  user: Types.ObjectId;
+  browser: string;
+  deviceType: string;
+  os: string;
+  location: string;
+  ipAddress: string;
+  accessToken: string;
+  refreshToken: string;
+  sid: string;
+};
+
+export type TAccountDeletionScheduleEmailPayload = {
+  email: string;
+  name: string;
+  deleteAt: string;
+  scheduleAt: string;
+};
+
+export interface IAccountDeletionMetaData {
+  jobId: string;
+  scheduleAt: string;
+  deleteAt: string;
+  userId: Types.ObjectId;
+}
+
 export default IProfile;
