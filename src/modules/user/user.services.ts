@@ -822,8 +822,60 @@ const UserServices = {
         expiredAt: calculateFutureDate(refreshTokenExpiresIn),
         lastUsedAt: new Date().toISOString(),
       };
-      let activityPayload: IActivityPayload;
+      const redisPipeLine = redisClient.pipeline();
+      redisPipeLine.set(
+        `user:${_id}:sessions:${sid}`,
+        JSON.stringify(session),
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+      if (
+        user?.accountStatus.accountStatus ===
+        AccountStatus.ACCOUNT_DELETE_PENDING
+      ) {
+        const metaDataString = await redisClient.get(`user:${_id}:delete-meta`);
+        const metaDataObject: IAccountDeletionMetaData = JSON.parse(
+          metaDataString as string
+        );
+        const emailPayload: TAccountDeletionCancelAndLoginEmailPayload = {
+          browser,
+          device: deviceType,
+          email,
+          ip: ipAddress,
+          location,
+          name,
+          os,
+          time: formatDateTime(new Date().toISOString()),
+          deleteAt: formatDateTime(metaDataObject.deleteAt),
+        };
+        const activityPayload: IActivityPayload = {
+          activityType: ActivityType.ACCOUNT_DELETE_SCHEDULE_CANCEL,
+          title: AccountActivityMap.DELETION_CANCELED.title,
+          description: AccountActivityMap.DELETION_CANCELED.description,
+          browser,
+          device: deviceType,
+          ipAddress,
+          location,
+          os,
+          user: _id as Types.ObjectId,
+        };
+        redisPipeLine.del(`user:${_id}:delete-meta`);
+        await cancelDeleteAccount({ userId: _id as Types.ObjectId });
+        await Promise.all([
+          redisPipeLine.exec(),
+          loginSuccessActivitySavedInDb(activityPayload),
+          addAccountScheduleDeletionCancelAndLoginNotificationToQueue(
+            emailPayload
+          ),
+        ]);
+        return {
+          accessToken: accessToken!,
+          refreshToken: refreshToken!,
+        };
+      }
       if (activity === ActivityType.SIGNUP_SUCCESS) {
+        let activityPayload: IActivityPayload;
         activityPayload = {
           activityType: ActivityType.SIGNUP_SUCCESS,
           title: AccountActivityMap.SIGNUP_SUCCESS.title,
@@ -839,14 +891,6 @@ const UserServices = {
           name,
           email,
         };
-        const redisPipeLine = redisClient.pipeline();
-        redisPipeLine.set(
-          `user:${_id}:sessions:${sid}`,
-          JSON.stringify(session),
-          'PX',
-          expiresInTimeUnitToMs(refreshTokenExpiresIn)
-        );
-        redisPipeLine.sadd(`user:${_id}:sessions`, sid);
         redisPipeLine.del(`user:otp:${_id}`);
         redisPipeLine.del(`otp:limit:${_id}`);
         redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
@@ -858,6 +902,7 @@ const UserServices = {
         ]);
       }
       if (activity === ActivityType.LOGIN_SUCCESS) {
+        let activityPayload: IActivityPayload;
         activityPayload = {
           activityType: ActivityType.LOGIN_SUCCESS,
           title: AccountActivityMap.LOGIN_SUCCESS.title,
@@ -879,14 +924,6 @@ const UserServices = {
           os,
           time: new Date().toISOString(),
         };
-        const redisPipeLine = redisClient.pipeline();
-        redisPipeLine.set(
-          `user:${_id}:sessions:${sid}`,
-          JSON.stringify(session),
-          'PX',
-          expiresInTimeUnitToMs(refreshTokenExpiresIn)
-        );
-        redisPipeLine.sadd(`user:${_id}:sessions`, sid);
         redisPipeLine.del(`user:otp:${_id}`);
         redisPipeLine.del(`otp:limit:${_id}`);
         redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
