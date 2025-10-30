@@ -15,6 +15,7 @@ import { accountRecoveryEmailTemplate } from '@/templates/accountRecoveryEmailTe
 import {
   IPasswordResetNotificationTemplateData,
   IResetPasswordSendEmailPayload,
+  TAccountDeletionCancelAndLoginEmailPayload,
   TAccountLockedEmailPayload,
   TAccountUnlockedEmailPayload,
   TLoginSuccessEmailPayload,
@@ -29,6 +30,7 @@ import { accountLockedEmailTemplate } from '@/templates/accountLockedEmailTempla
 import { accountUnlockedEmailTemplate } from '@/templates/accountUnLockedEmailTemplate';
 import { TAccountDeletionScheduleEmailPayload } from '@/modules/profile/profile.interfaces';
 import accountDeletionScheduleEmailTemplate from '@/templates/accountDeletationScheduleEmailTemplate';
+import accountDeletionScheduleCancelAndLoginEmailTemplate from '@/templates/accountDeletionScheduleCancelAndLoginEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 
@@ -176,6 +178,45 @@ const worker = new Worker(
           mailOption(
             email,
             'Your Workly Contacts account is scheduled for deletion',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
+      if (
+        name ===
+        'send-account-schedule-deletion-cancel-and-login-notification-email'
+      ) {
+        const {
+          name,
+          deleteAt,
+          browser,
+          device,
+          ip,
+          location,
+          os,
+          time,
+          email,
+        } = data as TAccountDeletionCancelAndLoginEmailPayload;
+        const templateData = {
+          name,
+          deleteAt,
+          browser,
+          device,
+          ip,
+          location,
+          os,
+          time,
+          email,
+        };
+        const template = Handlebars.compile(
+          accountDeletionScheduleCancelAndLoginEmailTemplate
+        );
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'Welcome Back to Workly Contacts',
             personalizedTemplate
           )
         );

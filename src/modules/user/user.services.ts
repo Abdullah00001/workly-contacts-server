@@ -44,7 +44,11 @@ import { OtpUtilsSingleton } from '@/singletons';
 import { v4 as uuidv4 } from 'uuid';
 import DateUtils from '@/utils/date.utils';
 import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
-import { ActivityType, AuthType } from '@/modules/user/user.enums';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+} from '@/modules/user/user.enums';
 import { RecoverUserInfoDTO } from '@/modules/user/user.dto';
 
 const { hashPassword } = PasswordUtils;
@@ -414,7 +418,7 @@ const UserServices = {
     rememberMe,
   }: TProcessLoginPayload): Promise<IUserPayload> => {
     try {
-      const { _id, name, email } = user;
+      const { _id, name, email, accountStatus } = user;
       const sid = uuidv4();
       const accessToken = generateAccessToken({
         sid,
@@ -459,6 +463,10 @@ const UserServices = {
         os,
         time: formatDateTime(new Date().toISOString()),
       };
+      if (
+        accountStatus.accountStatus === AccountStatus.ACCOUNT_DELETE_PENDING
+      ) {
+      }
       const redisPipeLine = redisClient.pipeline();
       redisPipeLine.set(
         `user:${_id}:sessions:${sid}`,

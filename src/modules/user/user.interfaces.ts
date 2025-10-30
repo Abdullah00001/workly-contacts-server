@@ -358,4 +358,17 @@ export type TProcessSessionsRemove = {
   sid: string;
 };
 
+export type TAccountDeletionCancelAndLoginEmailPayload = {
+  name: string;
+  email: string;
+  deleteAt: string;
+  time: string;
+  ip: string;
+  location: string;
+  device: string;
+  browser: string;
+  os: string;
+};
+
+
 export default IUser;
