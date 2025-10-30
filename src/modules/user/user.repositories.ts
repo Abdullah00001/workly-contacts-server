@@ -69,7 +69,12 @@ const UserRepositories = {
     try {
       const verifiedUser = await User.findByIdAndUpdate(
         userId,
-        { $set: { isVerified: true } },
+        {
+          $set: {
+            isVerified: true,
+            accountStatus: { accountStatus: AccountStatus.ACTIVE },
+          },
+        },
         { new: true }
       );
       return verifiedUser;

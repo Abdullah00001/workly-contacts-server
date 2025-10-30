@@ -99,6 +99,7 @@ const UserServices = {
       const createdUser = await createNewUser({
         ...payload,
         avatar: { publicId: null, url: null },
+        accountStatus: { accountStatus: AccountStatus.PENDING, lockedAt: null },
       });
       const otp = generate(6, {
         digits: true,
@@ -875,8 +876,7 @@ const UserServices = {
         };
       }
       if (activity === ActivityType.SIGNUP_SUCCESS) {
-        let activityPayload: IActivityPayload;
-        activityPayload = {
+        const activityPayload: IActivityPayload = {
           activityType: ActivityType.SIGNUP_SUCCESS,
           title: AccountActivityMap.SIGNUP_SUCCESS.title,
           description: AccountActivityMap.SIGNUP_SUCCESS.description,
@@ -902,8 +902,7 @@ const UserServices = {
         ]);
       }
       if (activity === ActivityType.LOGIN_SUCCESS) {
-        let activityPayload: IActivityPayload;
-        activityPayload = {
+        const activityPayload: IActivityPayload = {
           activityType: ActivityType.LOGIN_SUCCESS,
           title: AccountActivityMap.LOGIN_SUCCESS.title,
           description: AccountActivityMap.LOGIN_SUCCESS.description,
