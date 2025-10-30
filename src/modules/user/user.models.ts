@@ -23,7 +23,7 @@ const AccountStatusSchema = new Schema<TAccountStatus>(
     accountStatus: {
       type: String,
       enum: AccountStatus,
-      default: AccountStatus.ACTIVE,
+      default: AccountStatus.PENDING,
     },
     lockedAt: { type: String, default: null },
   },

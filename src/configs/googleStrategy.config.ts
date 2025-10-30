@@ -1,7 +1,11 @@
 import { env } from '@/env';
 import { IImage, TImage } from '@/modules/contacts/contacts.interfaces';
-import { ActivityType, AuthType } from '@/modules/user/user.enums';
-import { IUserPayload } from '@/modules/user/user.interfaces';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+} from '@/modules/user/user.enums';
+import { IUserPayload, TAccountStatus } from '@/modules/user/user.interfaces';
 import UserRepositories from '@/modules/user/user.repositories';
 import passport from 'passport';
 import {
@@ -40,7 +44,7 @@ passport.use(
       const email = profile.emails?.[0]?.value;
       const user = await findUserByEmail(email as string);
       const avatar: TImage = {
-        url: profile.photos?.[0]?.value as string,
+        url: profile.photos?.[0]?.value || null,
         publicId: null,
       };
       const name: string = profile.displayName;
@@ -54,6 +58,10 @@ passport.use(
           isVerified: true,
           provider: AuthType.GOOGLE,
           googleId,
+          accountStatus: {
+            accountStatus: AccountStatus.ACTIVE,
+            lockedAt: null,
+          } as TAccountStatus,
         };
         const createdUser = await createNewUser(newUser);
         return done(null, {

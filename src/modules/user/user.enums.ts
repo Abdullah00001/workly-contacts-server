@@ -18,7 +18,8 @@ export enum AccountStatus {
   ACTIVE = 'active',
   ON_RISK = 'on_risk',
   LOCKED = 'locked',
-  ACCOUNT_DELETE_PENDING = 'account_delete_pending',
+  DELETION_PENDING = 'deletion_pending',
+  PENDING = 'pending',
 }
 
 export enum DeviceType {

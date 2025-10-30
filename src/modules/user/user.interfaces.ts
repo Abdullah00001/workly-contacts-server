@@ -22,6 +22,11 @@ export type TAccountStatus = {
   lockedAt: string | null;
 };
 
+export type TAvatar = {
+  url: string | null;
+  publicId: string | null;
+};
+
 interface IUser extends Document {
   name: string;
   email: string;
@@ -156,6 +161,20 @@ export interface IUserPayload {
   refreshToken?: string;
   provider?: AuthType;
   googleId?: string;
+  accountStatus?: TAccountStatus;
+}
+
+export interface ICreateUserPayload {
+  name?: string;
+  email?: string;
+  password?: TPassword;
+  isVerified?: boolean;
+  avatar?: TAvatar;
+  userId?: Types.ObjectId;
+  phone?: string;
+  provider?: AuthType;
+  googleId?: string;
+  accountStatus?: TAccountStatus;
 }
 
 export interface IProcessFindUserReturn {
@@ -369,6 +388,5 @@ export type TAccountDeletionCancelAndLoginEmailPayload = {
   browser: string;
   os: string;
 };
-
 
 export default IUser;

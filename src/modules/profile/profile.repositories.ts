@@ -163,7 +163,7 @@ const ProfileRepositories = {
         {
           $set: {
             accountStatus: {
-              accountStatus: AccountStatus.ACCOUNT_DELETE_PENDING,
+              accountStatus: AccountStatus.DELETION_PENDING,
             },
           },
         },

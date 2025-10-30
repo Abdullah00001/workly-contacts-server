@@ -30,7 +30,7 @@ import { accountLockedEmailTemplate } from '@/templates/accountLockedEmailTempla
 import { accountUnlockedEmailTemplate } from '@/templates/accountUnLockedEmailTemplate';
 import { TAccountDeletionScheduleEmailPayload } from '@/modules/profile/profile.interfaces';
 import accountDeletionScheduleEmailTemplate from '@/templates/accountDeletationScheduleEmailTemplate';
-import accountDeletionScheduleCancelAndLoginEmailTemplate from '@/templates/accountDeletionScheduleCancelAndLoginEmailTemplate';
+import accountDeletionScheduleCancelAndLoginEmailTemplate from '@/templates/accountDeletationScheduleCancelAndLoginEmailTemplate';
 
 const { formatDateTime } = DateUtils;
 

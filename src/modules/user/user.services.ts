@@ -96,7 +96,10 @@ const otpUtils = OtpUtilsSingleton();
 const UserServices = {
   processSignup: async (payload: IUserPayload) => {
     try {
-      const createdUser = await createNewUser(payload);
+      const createdUser = await createNewUser({
+        ...payload,
+        avatar: { publicId: null, url: null },
+      });
       const otp = generate(6, {
         digits: true,
         lowerCaseAlphabets: false,
@@ -455,9 +458,7 @@ const UserServices = {
         expiresInTimeUnitToMs(refreshTokenExpiresIn)
       );
       redisPipeLine.sadd(`user:${_id}:sessions`, sid);
-      if (
-        accountStatus.accountStatus === AccountStatus.ACCOUNT_DELETE_PENDING
-      ) {
+      if (accountStatus.accountStatus === AccountStatus.DELETION_PENDING) {
         const metaDataString = await redisClient.get(`user:${_id}:delete-meta`);
         const metaDataObject: IAccountDeletionMetaData = JSON.parse(
           metaDataString as string
@@ -831,8 +832,7 @@ const UserServices = {
       );
       redisPipeLine.sadd(`user:${_id}:sessions`, sid);
       if (
-        user?.accountStatus.accountStatus ===
-        AccountStatus.ACCOUNT_DELETE_PENDING
+        user?.accountStatus.accountStatus === AccountStatus.DELETION_PENDING
       ) {
         const metaDataString = await redisClient.get(`user:${_id}:delete-meta`);
         const metaDataObject: IAccountDeletionMetaData = JSON.parse(

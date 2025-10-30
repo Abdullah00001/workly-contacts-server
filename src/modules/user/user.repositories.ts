@@ -1,6 +1,7 @@
 import Profile from '@/modules/profile/profile.models';
 import { AccountStatus, ActivityType } from '@/modules/user/user.enums';
 import {
+  ICreateUserPayload,
   IResetPasswordRepositoryPayload,
   IUserPayload,
   SecurityOverviewData,
@@ -38,13 +39,12 @@ const UserRepositories = {
       }
     }
   },
-  createNewUser: async (payload: IUserPayload) => {
+  createNewUser: async (payload: ICreateUserPayload) => {
     const session = await startSession();
     session.startTransaction();
     try {
       const newUser = new User({
         ...payload,
-        avatar: { publicId: null, url: null },
       });
       const newProfile = new Profile({
         user: newUser._id,
