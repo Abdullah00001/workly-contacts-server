@@ -177,6 +177,27 @@ const ProfileRepositories = {
       }
     }
   },
+  cancelDeleteAccount: async ({ userId }: { userId: Types.ObjectId }) => {
+    try {
+      return await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            accountStatus: {
+              accountStatus: AccountStatus.ACTIVE,
+            },
+          },
+        },
+        { new: true }
+      );
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Delete Account Query');
+      }
+    }
+  },
 };
 
 export default ProfileRepositories;

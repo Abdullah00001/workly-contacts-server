@@ -114,8 +114,8 @@ const ProfileServices = {
       const pipeline = redisClient.pipeline();
       const activityPayload: IActivityPayload = {
         activityType: ActivityType.ACCOUNT_DELETE_SCHEDULE,
-        title: AccountActivityMap.ACCOUNT_DELETE_SCHEDULE.title,
-        description: AccountActivityMap.ACCOUNT_DELETE_SCHEDULE.description,
+        title: AccountActivityMap.DELETION_SCHEDULED.title,
+        description: AccountActivityMap.DELETION_SCHEDULED.description,
         browser,
         device: deviceType,
         ipAddress,
