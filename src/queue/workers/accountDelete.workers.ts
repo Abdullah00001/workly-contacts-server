@@ -18,6 +18,7 @@ const worker = new Worker(
     if (name === 'schedule-account-deletion') {
       const { deleteAt, scheduleAt, userId } =
         data as IAccountDeletionJobPayload;
+      await redisClient.del(`user:${userId}:delete-meta`);
       const user = await User.findById(userId);
       await Label.deleteMany({ createdBy: userId });
       await Contacts.deleteMany({ userId });
