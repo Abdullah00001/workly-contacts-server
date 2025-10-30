@@ -58,6 +58,7 @@ module.exports= {
     // General rules
     'no-console': 'off',
     'no-debugger': 'warn',
+    'no-useless-escape': 'off',
   },
   ignorePatterns: ['dist/', 'node_modules/'],
 };

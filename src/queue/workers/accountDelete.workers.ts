@@ -15,38 +15,38 @@ const worker = new Worker(
   'account-deletion-queue',
   async (job: Job) => {
     const { name, data, id } = job;
-    if (name === 'schedule-account-deletion') {
-      const { deleteAt, scheduleAt, userId } =
-        data as IAccountDeletionJobPayload;
-      await redisClient.del(`user:${userId}:delete-meta`);
-      const user = await User.findById(userId);
-      await Label.deleteMany({ createdBy: userId });
-      await Contacts.deleteMany({ userId });
-      await Activity.deleteMany({ user: userId });
-      await Profile.deleteOne({ user: userId });
-      await User.deleteOne({ _id: userId });
-      const email = user?.email as string;
-      const templateData = {
-        name,
-        deleteAt,
-        scheduleAt,
-        email,
-        currentYear: 2025,
-      };
-      const template = Handlebars.compile(
-        accountDeletionConfirmationEmailTemplate
-      );
-      const personalizedTemplate = template(templateData);
-      await mailTransporter.sendMail(
-        mailOption(
-          email,
-          'Your Workly Contacts Account Has Been Permanently Deleted',
-          personalizedTemplate
-        )
-      );
-      return;
-    }
     try {
+      if (name === 'schedule-account-deletion') {
+        const { deleteAt, scheduleAt, userId } =
+          data as IAccountDeletionJobPayload;
+        await redisClient.del(`user:${userId}:delete-meta`);
+        const user = await User.findById(userId);
+        await Label.deleteMany({ createdBy: userId });
+        await Contacts.deleteMany({ userId });
+        await Activity.deleteMany({ user: userId });
+        await Profile.deleteOne({ user: userId });
+        await User.deleteOne({ _id: userId });
+        const email = user?.email as string;
+        const templateData = {
+          name,
+          deleteAt,
+          scheduleAt,
+          email,
+          currentYear: 2025,
+        };
+        const template = Handlebars.compile(
+          accountDeletionConfirmationEmailTemplate
+        );
+        const personalizedTemplate = template(templateData);
+        await mailTransporter.sendMail(
+          mailOption(
+            email,
+            'Your Workly Contacts Account Has Been Permanently Deleted',
+            personalizedTemplate
+          )
+        );
+        return;
+      }
     } catch (error) {
       logger.error('Worker job failed', { jobName: name, jobId: id, error });
       throw error;
