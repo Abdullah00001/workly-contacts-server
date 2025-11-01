@@ -11,6 +11,7 @@ export const corsWhiteList = [
 ];
 export const accessTokenExpiresIn = '15m';
 export const refreshTokenExpiresIn = '7d';
+export const addPasswordPageTokenExpiresIn = '7d';
 export const refreshTokenExpiresInWithoutRememberMe = '1d';
 export const recoverSessionExpiresIn = '5m';
 export const activationTokenExpiresIn = '1d';

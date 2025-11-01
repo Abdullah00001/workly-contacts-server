@@ -22,4 +22,5 @@ export default interface IEnvConfig {
   SERVER_BASE_URL: string;
   JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY: string;
   JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY: string;
+  JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY:string;
 }

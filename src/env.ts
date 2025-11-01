@@ -33,4 +33,7 @@ export const env: IEnvConfig = {
   JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY: getEnvVariable(
     'JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY'
   ),
+  JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY: getEnvVariable(
+    'JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY'
+  ),
 };
