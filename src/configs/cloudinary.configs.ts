@@ -1,6 +1,8 @@
 import { v2 as cloudinary, ConfigOptions } from 'cloudinary';
 import { env } from '@/env';
 import fs from 'fs';
+import logger from '@/configs/logger.configs';
+import axios from 'axios';
 
 const { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET_KEY, CLOUDINARY_NAME } = env;
 
@@ -38,6 +40,35 @@ const CloudinaryConfigs = {
       }
       fs.unlinkSync(imagePath);
       return null;
+    }
+  },
+  uploadAvatar: async (url: string | null) => {
+    if (!url) return { publicId: null, url: null };
+    try {
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const buffer = Buffer.from(response.data, 'binary');
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: 'auto',
+            folder: 'amarcontacts',
+          },
+          (error, result) => {
+            if (error) {
+              reject(error);
+            } else if (result) {
+              resolve({
+                url: result.secure_url,
+                publicId: result.public_id,
+              });
+            }
+          }
+        );
+        uploadStream.end(buffer);
+      });
+    } catch (error) {
+      logger.error('Google avatar upload failed:', error);
+      return { publicId: null, url: null };
     }
   },
   destroy: async (publicId: string) => {

@@ -1,3 +1,4 @@
+import CloudinaryConfigs from '@/configs/cloudinary.configs';
 import { env } from '@/env';
 import { IImage, TImage } from '@/modules/contacts/contacts.interfaces';
 import {
@@ -15,6 +16,7 @@ import {
 } from 'passport-google-oauth20';
 
 const { CALLBACK_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = env;
+const { uploadAvatar } = CloudinaryConfigs;
 const { findUserByEmail, createNewUser } = UserRepositories;
 
 /**
@@ -43,10 +45,7 @@ passport.use(
     ) => {
       const email = profile.emails?.[0]?.value;
       const user = await findUserByEmail(email as string);
-      const avatar: TImage = {
-        url: profile.photos?.[0]?.value || null,
-        publicId: null,
-      };
+      const avatar = await uploadAvatar(profile.photos?.[0]?.value || null);
       const name: string = profile.displayName;
       const googleId: string = profile.id;
       if (!user) {
