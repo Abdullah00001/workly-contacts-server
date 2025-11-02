@@ -19,6 +19,8 @@ import ExtractMetaData from '@/utils/metaData.utils';
 import { CreateUserResponseDTO } from '@/modules/user/user.dto';
 import { TokenPayload } from '@/interfaces/jwtPayload.interfaces';
 import { TRequestUser } from '@/types/express';
+import mongoose from 'mongoose';
+import ProfileServices from '@/modules/profile/profile.services';
 
 const { cookieOption } = CookieUtils;
 const { getRealIP, getClientMetaData } = ExtractMetaData;
@@ -50,6 +52,7 @@ const {
   processRetrieveActivity,
   processRetrieveActivityDetails,
 } = UserServices;
+const { processChangePassword } = ProfileServices;
 
 const UserControllers = {
   /**
@@ -601,7 +604,34 @@ const UserControllers = {
         refreshToken,
         cookieOption(refreshTokenExpiresIn)
       );
-      res.redirect(CLIENT_BASE_URL);
+      res.redirect(`${CLIENT_BASE_URL}/auth/create-password`);
+    } catch (error) {
+      const err = error as Error;
+      logger.error(err.message);
+      next(error);
+    }
+  },
+  handleCreatePassword: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { password } = req.body;
+      const { sub } = req.decoded;
+      const { pass_rqrd } = req.cookies;
+      const user = new mongoose.Types.ObjectId(sub);
+      await processChangePassword({
+        password: { secret: password, change_at: new Date().toISOString() },
+        user,
+        addPasswordPageToken: pass_rqrd,
+      });
+      res.clearCookie('pass_rqrd', cookieOption(addPasswordPageTokenExpiresIn));
+      res.status(200).json({
+        status: 'success',
+        message: 'password create successful',
+      });
+      return;
     } catch (error) {
       const err = error as Error;
       logger.error(err.message);

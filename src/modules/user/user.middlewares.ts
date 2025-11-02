@@ -50,6 +50,7 @@ const {
   verifyChangePasswordPageToken,
   generateClearDevicePageToken,
   verifyClearDevicePageToken,
+  verifyAddPasswordPageToken,
 } = JwtUtils;
 const { sharedCookieOption, cookieOption } = CookieUtils;
 const {
@@ -645,6 +646,52 @@ const UserMiddlewares = {
         return;
       }
       req.decoded = decoded as TokenPayload;
+      next();
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error(error);
+        next(error);
+      } else {
+        logger.error(
+          'Unknown Error Occurred In Check Refresh Token Middleware'
+        );
+        next(error);
+      }
+    }
+  },
+  checkAddPasswordPageToken: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const token = req.cookies?.pass_rqrd;
+      if (!token) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorize Request',
+          error: AuthErrorType.TOKEN_EXPIRED,
+        });
+        return;
+      }
+      const isBlacklisted = await redisClient.get(`blacklist:jwt:${token}`);
+      if (isBlacklisted) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorize Request',
+          error: AuthErrorType.TOKEN_BLACKLISTED,
+        });
+        return;
+      }
+      const decoded = verifyAddPasswordPageToken(token);
+      if (!decoded) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorize Request',
+          error: AuthErrorType.TOKEN_INVALID,
+        });
+        return;
+      }
       next();
     } catch (error) {
       if (error instanceof Error) {

@@ -3,6 +3,7 @@ import redisClient from '@/configs/redis.configs';
 import {
   accessTokenExpiresIn,
   AccountActivityMap,
+  addPasswordPageTokenExpiresIn,
   refreshTokenExpiresIn,
 } from '@/const';
 import {
@@ -83,8 +84,20 @@ const ProfileServices = {
       }
     }
   },
-  processChangePassword: async ({ user, password }: IProfilePayload) => {
+  processChangePassword: async ({
+    user,
+    password,
+    addPasswordPageToken,
+  }: IProfilePayload) => {
     try {
+      if (addPasswordPageToken) {
+        await redisClient.set(
+          `blacklist:jwt:${addPasswordPageToken}`,
+          addPasswordPageToken,
+          'PX',
+          expiresInTimeUnitToMs(addPasswordPageTokenExpiresIn)
+        );
+      }
       const hash = (await hashPassword(password?.secret as string)) as string;
       await changePassword({
         user,

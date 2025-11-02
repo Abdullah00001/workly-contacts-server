@@ -35,6 +35,7 @@ export interface IProfilePayload {
   avatar?: TImage;
   password?: TPassword;
   gender?: TGender;
+  addPasswordPageToken?: string;
 }
 export interface IProfileProjection {
   location?: string;
