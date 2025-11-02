@@ -6,6 +6,7 @@ import CookieUtils from '@/utils/cookie.utils';
 import {
   accessTokenExpiresIn,
   activationTokenExpiresIn,
+  addPasswordPageTokenExpiresIn,
   changePasswordPageTokenExpiresIn,
   clearDevicePageTokenExpireIn,
   recoverSessionExpiresIn,
@@ -572,16 +573,24 @@ const UserControllers = {
     try {
       const { browser, device, location, os, ip } =
         await getClientMetaData(req);
-      const { accessToken, refreshToken } = await processOAuthCallback({
-        user,
-        activity: activity as ActivityType,
-        browser: browser.name as string,
-        deviceType: device.type || 'desktop',
-        ipAddress: ip,
-        location: `${location.city} ${location.country}`,
-        os: os.name as string,
-        provider,
-      });
+      const { accessToken, refreshToken, addPasswordPageToken } =
+        await processOAuthCallback({
+          user,
+          activity: activity as ActivityType,
+          browser: browser.name as string,
+          deviceType: device.type || 'desktop',
+          ipAddress: ip,
+          location: `${location.city} ${location.country}`,
+          os: os.name as string,
+          provider,
+        });
+      if (addPasswordPageToken) {
+        res.cookie(
+          'pass_rqrd',
+          addPasswordPageToken,
+          cookieOption(addPasswordPageTokenExpiresIn)
+        );
+      }
       res.cookie(
         'accesstoken',
         accessToken,

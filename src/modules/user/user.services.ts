@@ -90,6 +90,7 @@ const {
   generateRecoverToken,
   generateActivationToken,
   generateChangePasswordPageToken,
+  generateAddPasswordPageToken,
 } = JwtUtils;
 const otpUtils = OtpUtilsSingleton();
 
@@ -933,9 +934,20 @@ const UserServices = {
           addLoginSuccessNotificationEmailToQueue(emailPayload),
         ]);
       }
+      if (activity === ActivityType.SIGNUP_SUCCESS) {
+        const addPasswordPageToken = generateAddPasswordPageToken({
+          sid,
+          sub: _id as string,
+        });
+        return {
+          accessToken: accessToken as string,
+          refreshToken: refreshToken as string,
+          addPasswordPageToken: addPasswordPageToken as string,
+        };
+      }
       return {
-        accessToken: accessToken!,
-        refreshToken: refreshToken!,
+        accessToken: accessToken as string,
+        refreshToken: refreshToken as string,
       };
     } catch (error) {
       if (error instanceof Error) {
