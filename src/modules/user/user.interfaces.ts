@@ -159,7 +159,7 @@ export interface IUserPayload {
   otp?: string;
   accessToken?: string;
   refreshToken?: string;
-  addPasswordPageToken?:string;
+  addPasswordPageToken?: string;
   provider?: AuthType;
   googleId?: string;
   accountStatus?: TAccountStatus;
