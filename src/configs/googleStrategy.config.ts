@@ -1,7 +1,12 @@
+import CloudinaryConfigs from '@/configs/cloudinary.configs';
 import { env } from '@/env';
-import { IImage, TImage } from '@/modules/contacts/contacts.interfaces';
-import { ActivityType, AuthType } from '@/modules/user/user.enums';
-import { IUserPayload } from '@/modules/user/user.interfaces';
+import { IImage } from '@/modules/contacts/contacts.interfaces';
+import {
+  AccountStatus,
+  ActivityType,
+  AuthType,
+} from '@/modules/user/user.enums';
+import { IUserPayload, TAccountStatus } from '@/modules/user/user.interfaces';
 import UserRepositories from '@/modules/user/user.repositories';
 import passport from 'passport';
 import {
@@ -11,6 +16,7 @@ import {
 } from 'passport-google-oauth20';
 
 const { CALLBACK_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = env;
+const { uploadAvatar } = CloudinaryConfigs;
 const { findUserByEmail, createNewUser } = UserRepositories;
 
 /**
@@ -39,13 +45,10 @@ passport.use(
     ) => {
       const email = profile.emails?.[0]?.value;
       const user = await findUserByEmail(email as string);
-      const avatar: TImage = {
-        url: profile.photos?.[0]?.value as string,
-        publicId: null,
-      };
-      const name: string = profile.displayName;
-      const googleId: string = profile.id;
       if (!user) {
+        const googleId: string = profile.id;
+        const avatar = await uploadAvatar(profile.photos?.[0]?.value || null);
+        const name: string = profile.displayName;
         const newUser: IUserPayload = {
           avatar: avatar as IImage,
           email,
@@ -54,6 +57,10 @@ passport.use(
           isVerified: true,
           provider: AuthType.GOOGLE,
           googleId,
+          accountStatus: {
+            accountStatus: AccountStatus.ACTIVE,
+            lockedAt: null,
+          } as TAccountStatus,
         };
         const createdUser = await createNewUser(newUser);
         return done(null, {

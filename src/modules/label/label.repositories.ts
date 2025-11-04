@@ -60,7 +60,6 @@ const LabelRepositories = {
             contactCount: { $size: '$contacts' },
           },
         },
-        
       ]);
 
       return labels;

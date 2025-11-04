@@ -4,6 +4,7 @@ import { env } from '@/env';
 import {
   accessTokenExpiresIn,
   activationTokenExpiresIn,
+  addPasswordPageTokenExpiresIn,
   changePasswordPageTokenExpiresIn,
   clearDevicePageTokenExpireIn,
   recoverSessionExpiresIn,
@@ -75,6 +76,23 @@ const JwtUtils = {
     return jwt.sign(payload, env.JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY, {
       expiresIn: clearDevicePageTokenExpireIn,
     });
+  },
+  generateAddPasswordPageToken: (payload: TokenPayload | null): string => {
+    if (!payload) {
+      throw new Error('Generate Add Password Page Token Payload Cant Be Null');
+    }
+    return jwt.sign(payload, env.JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY, {
+      expiresIn: addPasswordPageTokenExpiresIn,
+    });
+  },
+  verifyAddPasswordPageToken: (token: string | null): JwtPayload => {
+    if (!token) {
+      throw new Error('Add Password Page Token Is Missing');
+    }
+    return jwt.verify(
+      token,
+      env.JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY
+    ) as JwtPayload;
   },
   verifyClearDevicePageToken: (token: string | null): JwtPayload => {
     if (!token) {

@@ -1,23 +1,41 @@
 import CloudinaryConfigs from '@/configs/cloudinary.configs';
 import redisClient from '@/configs/redis.configs';
 import {
+  accessTokenExpiresIn,
+  AccountActivityMap,
+  addPasswordPageTokenExpiresIn,
+  refreshTokenExpiresIn,
+} from '@/const';
+import {
   IGetProfilePayload,
   IProcessAvatarChange,
   IProcessAvatarRemove,
   IProcessAvatarUpload,
   IProfilePayload,
   IProfileProjection,
+  TAccountDeletionScheduleEmailPayload,
+  TProcessDeleteAccount,
 } from '@/modules/profile/profile.interfaces';
 import ProfileRepositories from '@/modules/profile/profile.repositories';
-import { TPassword } from '@/modules/user/user.interfaces';
+import { ActivityType } from '@/modules/user/user.enums';
+import { IActivityPayload, TPassword } from '@/modules/user/user.interfaces';
+import AccountDeleteQueueJobs from '@/queue/jobs/accountDelete.jobs';
+import ActivityQueueJobs from '@/queue/jobs/activity.jobs';
+import EmailQueueJobs from '@/queue/jobs/email.jobs';
 import CalculationUtils from '@/utils/calculation.utils';
+import DateUtils from '@/utils/date.utils';
 import PasswordUtils from '@/utils/password.utils';
 import { join } from 'path';
 
+const { calculateFutureDate, formatDateTime } = DateUtils;
 const { getProfile, updateProfile, changePassword, deleteAccount } =
   ProfileRepositories;
+const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
 const { upload, destroy } = CloudinaryConfigs;
 const { hashPassword } = PasswordUtils;
+const { scheduleAccountDeletion } = AccountDeleteQueueJobs;
+const { scheduleAccountDeletionActivitySavedInDb } = ActivityQueueJobs;
+const { addAccountScheduleDeletionNotificationToQueue } = EmailQueueJobs;
 
 const ProfileServices = {
   processUpdateProfile: async (payload: IProfilePayload) => {
@@ -66,8 +84,20 @@ const ProfileServices = {
       }
     }
   },
-  processChangePassword: async ({ user, password }: IProfilePayload) => {
+  processChangePassword: async ({
+    user,
+    password,
+    addPasswordPageToken,
+  }: IProfilePayload) => {
     try {
+      if (addPasswordPageToken) {
+        await redisClient.set(
+          `blacklist:jwt:${addPasswordPageToken}`,
+          addPasswordPageToken,
+          'PX',
+          expiresInTimeUnitToMs(addPasswordPageTokenExpiresIn)
+        );
+      }
       const hash = (await hashPassword(password?.secret as string)) as string;
       await changePassword({
         user,
@@ -82,14 +112,70 @@ const ProfileServices = {
       }
     }
   },
-  processDeleteAccount: async (payload: IProfilePayload) => {
+  processDeleteAccount: async ({
+    accessToken,
+    browser,
+    deviceType,
+    ipAddress,
+    location,
+    os,
+    refreshToken,
+    user,
+    sid,
+  }: TProcessDeleteAccount) => {
     try {
-      await deleteAccount(payload);
+      const pipeline = redisClient.pipeline();
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.ACCOUNT_DELETE_SCHEDULE,
+        title: AccountActivityMap.DELETION_SCHEDULED.title,
+        description: AccountActivityMap.DELETION_SCHEDULED.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user,
+      };
+      const result = await deleteAccount({ userId: user });
+      const deleteAt = calculateFutureDate('7d');
+      const emailPayload: TAccountDeletionScheduleEmailPayload = {
+        email: result?.email as string,
+        name: result?.name as string,
+        scheduleAt: formatDateTime(new Date().toISOString()),
+        deleteAt: formatDateTime(deleteAt),
+      };
+      pipeline.set(
+        `blacklist:jwt:${accessToken}`,
+        accessToken!,
+        'PX',
+        expiresInTimeUnitToMs(accessTokenExpiresIn)
+      );
+      pipeline.set(
+        `blacklist:jwt:${refreshToken}`,
+        refreshToken!,
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      pipeline.set(
+        `blacklist:sessions:${sid}`,
+        sid,
+        'PX',
+        expiresInTimeUnitToMs(refreshTokenExpiresIn)
+      );
+      const sessions = await redisClient.smembers(`user:${user}:sessions`);
+      pipeline.del(`user:${user}:sessions`);
+      sessions.forEach((sid) => {
+        pipeline.del(`user:${user}:sessions:${sid}`);
+      });
       await Promise.all([
-        redisClient.del(`me:${payload.user}`),
-        redisClient.del(`contacts:${payload.user}`),
-        redisClient.del(`favorites:${payload.user}`),
-        redisClient.del(`trash:${payload.user}`),
+        pipeline.exec(),
+        scheduleAccountDeletion({
+          userId: user,
+          scheduleAt: new Date().toISOString(),
+          deleteAt,
+        }),
+        scheduleAccountDeletionActivitySavedInDb(activityPayload),
+        addAccountScheduleDeletionNotificationToQueue(emailPayload),
       ]);
     } catch (error) {
       if (error instanceof Error) {

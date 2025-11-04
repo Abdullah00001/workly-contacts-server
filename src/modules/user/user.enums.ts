@@ -10,12 +10,16 @@ export enum ActivityType {
   PASSWORD_RESET = 'PASSWORD_RESET',
   ACCOUNT_LOCKED = 'ACCOUNT_LOCKED',
   ACCOUNT_ACTIVE = 'ACCOUNT_ACTIVE',
+  ACCOUNT_DELETE_SCHEDULE = 'DELETION_SCHEDULED',
+  ACCOUNT_DELETE_SCHEDULE_CANCEL = 'DELETION_CANCELED',
 }
 
 export enum AccountStatus {
   ACTIVE = 'active',
   ON_RISK = 'on_risk',
   LOCKED = 'locked',
+  DELETION_PENDING = 'deletion_pending',
+  PENDING = 'pending',
 }
 
 export enum DeviceType {

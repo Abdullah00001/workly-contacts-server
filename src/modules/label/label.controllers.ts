@@ -82,7 +82,7 @@ const LabelControllers = {
       const { id } = req.params;
       const { sub } = req.decoded;
       const { withContacts } = req.query;
-      console.log(withContacts)
+      console.log(withContacts);
       await processDeleteLabel({
         withContacts: withContacts === 'true',
         userId: new mongoose.Types.ObjectId(sub),

@@ -22,6 +22,11 @@ export type TAccountStatus = {
   lockedAt: string | null;
 };
 
+export type TAvatar = {
+  url: string | null;
+  publicId: string | null;
+};
+
 interface IUser extends Document {
   name: string;
   email: string;
@@ -54,6 +59,12 @@ export interface IActivity extends Document {
   user: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface IAccountDeletionJobPayload {
+  userId: Types.ObjectId;
+  scheduleAt: string;
+  deleteAt: string;
 }
 
 export interface IActivityPayload {
@@ -148,8 +159,23 @@ export interface IUserPayload {
   otp?: string;
   accessToken?: string;
   refreshToken?: string;
+  addPasswordPageToken?:string;
   provider?: AuthType;
   googleId?: string;
+  accountStatus?: TAccountStatus;
+}
+
+export interface ICreateUserPayload {
+  name?: string;
+  email?: string;
+  password?: TPassword;
+  isVerified?: boolean;
+  avatar?: TAvatar;
+  userId?: Types.ObjectId;
+  phone?: string;
+  provider?: AuthType;
+  googleId?: string;
+  accountStatus?: TAccountStatus;
 }
 
 export interface IProcessFindUserReturn {
@@ -350,6 +376,18 @@ export type TProcessSessionsRemove = {
   sub: string;
   sessionId: string;
   sid: string;
+};
+
+export type TAccountDeletionCancelAndLoginEmailPayload = {
+  name: string;
+  email: string;
+  deleteAt: string;
+  time: string;
+  ip: string;
+  location: string;
+  device: string;
+  browser: string;
+  os: string;
 };
 
 export default IUser;

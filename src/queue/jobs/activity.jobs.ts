@@ -48,6 +48,17 @@ const ActivityQueueJobs = {
       }
     );
   },
+  scheduleAccountDeletionActivitySavedInDb: async (data: IActivityPayload) => {
+    await ActivityQueue.add(
+      'save-schedule-account-deletion-activity-to-db',
+      data,
+      {
+        attempts: 3,
+        removeOnComplete: true,
+        backoff: { type: 'exponential', delay: 3000 },
+      }
+    );
+  },
 };
 
 export default ActivityQueueJobs;

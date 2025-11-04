@@ -62,6 +62,7 @@ const {
   handleForceLogout,
   handleRetrieveActivity,
   handleRetrieveActivityDetails,
+  handleCreatePassword,
 } = UserControllers;
 
 const router = Router();
@@ -129,6 +130,10 @@ router.route('/google/callback').get(
   checkSessionsLimit,
   handleProcessOAuthCallback
 );
+
+router
+  .route('/auth/create-password')
+  .post(checkAccessToken, checkSession, handleCreatePassword);
 
 // These Routes Are For Account Unlock
 router

@@ -7,9 +7,10 @@ import IProfile, {
   IProfileProjection,
 } from '@/modules/profile/profile.interfaces';
 import Profile from '@/modules/profile/profile.models';
+import { AccountStatus } from '@/modules/user/user.enums';
 import IUser from '@/modules/user/user.interfaces';
 import User from '@/modules/user/user.models';
-import mongoose, { startSession } from 'mongoose';
+import mongoose, { startSession, Types } from 'mongoose';
 
 const ProfileRepositories = {
   updateProfile: async ({
@@ -155,18 +156,41 @@ const ProfileRepositories = {
       }
     }
   },
-  deleteAccount: async ({ user }: IProfilePayload) => {
-    const session = await startSession();
-    session.startTransaction();
+  deleteAccount: async ({ userId }: { userId: Types.ObjectId }) => {
     try {
-      await User.findByIdAndDelete(user, { session });
-      await Profile.findOneAndDelete({ user }, { session });
-      await Contacts.deleteMany({ userId: user }, { session });
-      await session.commitTransaction();
-      session.endSession();
+      return await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            accountStatus: {
+              accountStatus: AccountStatus.DELETION_PENDING,
+            },
+          },
+        },
+        { new: true }
+      );
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Unknown Error Occurred In Delete Account Query');
+      }
+    }
+  },
+  cancelDeleteAccount: async ({ userId }: { userId: Types.ObjectId }) => {
+    try {
+      return await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            accountStatus: {
+              accountStatus: AccountStatus.ACTIVE,
+            },
+          },
+        },
+        { new: true }
+      );
+    } catch (error) {
       if (error instanceof Error) {
         throw error;
       } else {

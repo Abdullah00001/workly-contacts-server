@@ -11,6 +11,7 @@ export const corsWhiteList = [
 ];
 export const accessTokenExpiresIn = '15m';
 export const refreshTokenExpiresIn = '7d';
+export const addPasswordPageTokenExpiresIn = '7d';
 export const refreshTokenExpiresInWithoutRememberMe = '1d';
 export const recoverSessionExpiresIn = '5m';
 export const activationTokenExpiresIn = '1d';
@@ -77,6 +78,16 @@ export const AccountActivityMap: Record<
     title: 'Account Activated',
     description:
       'Your account has been successfully activated and is now ready for use. If you did not initiate this action, please contact support immediately.',
+  },
+  [ActivityType.ACCOUNT_DELETE_SCHEDULE]: {
+    title: 'Account Deletion Scheduled',
+    description:
+      'You requested to delete your account. Your account and all associated data are scheduled for permanent deletion after 7 days. If you log in before that time, the deletion will be automatically cancelled.',
+  },
+  [ActivityType.ACCOUNT_DELETE_SCHEDULE_CANCEL]: {
+    title: 'Account Deletion Cancelled',
+    description:
+      'Your recent login activity has cancelled the previously scheduled account deletion. Your account is now active again. If you did not perform this login, please secure your account immediately.',
   },
 };
 
