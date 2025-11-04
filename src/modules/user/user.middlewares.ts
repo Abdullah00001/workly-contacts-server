@@ -337,7 +337,15 @@ const UserMiddlewares = {
       const { user, provider } = req.user as TRequestUser;
       const { _id } = user;
       const sessions = await redisClient.smembers(`user:${_id}:sessions`);
-      if (sessions.length === 3) {
+      const validSessions: string[] = [];
+      for (const sessionId of sessions) {
+        const isExist = await redisClient.exists(
+          `user:${_id}:sessions:${sessionId}`
+        );
+        if (isExist) validSessions.push(sessionId);
+        else await redisClient.srem(`user:${_id}:sessions`, sessionId);
+      }
+      if (validSessions.length === 3) {
         let token;
         if (provider === AuthType.GOOGLE) {
           token = generateClearDevicePageToken({
