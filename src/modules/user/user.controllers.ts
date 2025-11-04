@@ -587,13 +587,6 @@ const UserControllers = {
           os: os.name as string,
           provider,
         });
-      if (addPasswordPageToken && activity === ActivityType.SIGNUP_SUCCESS) {
-        res.cookie(
-          'pass_rqrd',
-          addPasswordPageToken,
-          cookieOption(addPasswordPageTokenExpiresIn)
-        );
-      }
       res.cookie(
         'accesstoken',
         accessToken,
@@ -604,7 +597,21 @@ const UserControllers = {
         refreshToken,
         cookieOption(refreshTokenExpiresIn)
       );
-      if (activity === ActivityType.SIGNUP_SUCCESS) {
+      if (addPasswordPageToken && activity === ActivityType.SIGNUP_SUCCESS) {
+        res.cookie(
+          'pass_rqrd',
+          addPasswordPageToken,
+          cookieOption(addPasswordPageTokenExpiresIn)
+        );
+        res.redirect(`${CLIENT_BASE_URL}/auth/create-password`);
+        return;
+      }
+      if (addPasswordPageToken) {
+        res.cookie(
+          'pass_rqrd',
+          addPasswordPageToken,
+          cookieOption(addPasswordPageTokenExpiresIn)
+        );
         res.redirect(`${CLIENT_BASE_URL}/auth/create-password`);
         return;
       }

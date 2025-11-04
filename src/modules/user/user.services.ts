@@ -83,7 +83,7 @@ const {
 } = UserRepositories;
 const { cancelDeleteAccount } = ProfileRepositories;
 const { expiresInTimeUnitToMs, calculateMilliseconds } = CalculationUtils;
-const { calculateFutureDate, formatDateTime } = DateUtils;
+const { calculateFutureDate, formatDateTime, compareDate } = DateUtils;
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -908,6 +908,28 @@ const UserServices = {
           loginSuccessActivitySavedInDb(activityPayload),
           addLoginSuccessNotificationEmailToQueue(emailPayload),
         ]);
+        if (!user.password.secret && compareDate(user.createdAt, '7d')) {
+          const addPasswordPageToken = generateAddPasswordPageToken({
+            sid,
+            sub: _id as string,
+          });
+          return {
+            accessToken: accessToken as string,
+            refreshToken: refreshToken as string,
+            addPasswordPageToken: addPasswordPageToken as string,
+          };
+        }
+        if (!user.password.secret) {
+          const addPasswordPageToken = generateAddPasswordPageToken({
+            sid,
+            sub: _id as string,
+          });
+          return {
+            accessToken: accessToken as string,
+            refreshToken: refreshToken as string,
+            addPasswordPageToken: addPasswordPageToken as string,
+          };
+        }
         return {
           accessToken: accessToken as string,
           refreshToken: refreshToken as string,
