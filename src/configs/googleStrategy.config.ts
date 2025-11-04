@@ -1,6 +1,6 @@
 import CloudinaryConfigs from '@/configs/cloudinary.configs';
 import { env } from '@/env';
-import { IImage, TImage } from '@/modules/contacts/contacts.interfaces';
+import { IImage } from '@/modules/contacts/contacts.interfaces';
 import {
   AccountStatus,
   ActivityType,
@@ -45,10 +45,10 @@ passport.use(
     ) => {
       const email = profile.emails?.[0]?.value;
       const user = await findUserByEmail(email as string);
-      const avatar = await uploadAvatar(profile.photos?.[0]?.value || null);
-      const name: string = profile.displayName;
-      const googleId: string = profile.id;
       if (!user) {
+        const googleId: string = profile.id;
+        const avatar = await uploadAvatar(profile.photos?.[0]?.value || null);
+        const name: string = profile.displayName;
         const newUser: IUserPayload = {
           avatar: avatar as IImage,
           email,

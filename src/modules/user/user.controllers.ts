@@ -587,7 +587,7 @@ const UserControllers = {
           os: os.name as string,
           provider,
         });
-      if (addPasswordPageToken) {
+      if (addPasswordPageToken && activity === ActivityType.SIGNUP_SUCCESS) {
         res.cookie(
           'pass_rqrd',
           addPasswordPageToken,
@@ -604,7 +604,12 @@ const UserControllers = {
         refreshToken,
         cookieOption(refreshTokenExpiresIn)
       );
-      res.redirect(`${CLIENT_BASE_URL}/auth/create-password`);
+      if (activity === ActivityType.SIGNUP_SUCCESS) {
+        res.redirect(`${CLIENT_BASE_URL}/auth/create-password`);
+        return;
+      }
+      res.redirect(CLIENT_BASE_URL);
+      return;
     } catch (error) {
       const err = error as Error;
       logger.error(err.message);

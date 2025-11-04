@@ -833,6 +833,7 @@ const UserServices = {
         expiresInTimeUnitToMs(refreshTokenExpiresIn)
       );
       redisPipeLine.sadd(`user:${_id}:sessions`, sid);
+      // cancel account deletion on OAuth Login
       if (
         user?.accountStatus.accountStatus === AccountStatus.DELETION_PENDING
       ) {
@@ -876,32 +877,6 @@ const UserServices = {
           refreshToken: refreshToken!,
         };
       }
-      if (activity === ActivityType.SIGNUP_SUCCESS) {
-        const activityPayload: IActivityPayload = {
-          activityType: ActivityType.SIGNUP_SUCCESS,
-          title: AccountActivityMap.SIGNUP_SUCCESS.title,
-          description: AccountActivityMap.SIGNUP_SUCCESS.description,
-          browser,
-          device: deviceType,
-          ipAddress,
-          location,
-          os,
-          user: _id as Types.ObjectId,
-        };
-        const emailPayload: TSignupSuccessEmailPayloadData = {
-          name,
-          email,
-        };
-        redisPipeLine.del(`user:otp:${_id}`);
-        redisPipeLine.del(`otp:limit:${_id}`);
-        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
-        redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}:count`);
-        await Promise.all([
-          redisPipeLine.exec(),
-          signupSuccessActivitySavedInDb(activityPayload),
-          addSendSignupSuccessNotificationEmailToQueue(emailPayload),
-        ]);
-      }
       if (activity === ActivityType.LOGIN_SUCCESS) {
         const activityPayload: IActivityPayload = {
           activityType: ActivityType.LOGIN_SUCCESS,
@@ -933,21 +908,43 @@ const UserServices = {
           loginSuccessActivitySavedInDb(activityPayload),
           addLoginSuccessNotificationEmailToQueue(emailPayload),
         ]);
-      }
-      if (activity === ActivityType.SIGNUP_SUCCESS) {
-        const addPasswordPageToken = generateAddPasswordPageToken({
-          sid,
-          sub: _id as string,
-        });
         return {
           accessToken: accessToken as string,
           refreshToken: refreshToken as string,
-          addPasswordPageToken: addPasswordPageToken as string,
         };
       }
+      const activityPayload: IActivityPayload = {
+        activityType: ActivityType.SIGNUP_SUCCESS,
+        title: AccountActivityMap.SIGNUP_SUCCESS.title,
+        description: AccountActivityMap.SIGNUP_SUCCESS.description,
+        browser,
+        device: deviceType,
+        ipAddress,
+        location,
+        os,
+        user: _id as Types.ObjectId,
+      };
+      const emailPayload: TSignupSuccessEmailPayloadData = {
+        name,
+        email,
+      };
+      redisPipeLine.del(`user:otp:${_id}`);
+      redisPipeLine.del(`otp:limit:${_id}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}`);
+      redisPipeLine.del(`otp:resendOtpEmailCoolDown:${_id}:count`);
+      await Promise.all([
+        redisPipeLine.exec(),
+        signupSuccessActivitySavedInDb(activityPayload),
+        addSendSignupSuccessNotificationEmailToQueue(emailPayload),
+      ]);
+      const addPasswordPageToken = generateAddPasswordPageToken({
+        sid,
+        sub: _id as string,
+      });
       return {
         accessToken: accessToken as string,
         refreshToken: refreshToken as string,
+        addPasswordPageToken: addPasswordPageToken as string,
       };
     } catch (error) {
       if (error instanceof Error) {
