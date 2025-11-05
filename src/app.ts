@@ -25,7 +25,6 @@ const swaggerDocument: JsonObject = YAML.load(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// app.use(multer().none());
 app.use(cookieParser());
 app.use(cors(corsConfiguration));
 app.use(userAgent.express());

@@ -6,6 +6,7 @@ export const corsWhiteList = [
   'http://localhost:3000',
   'https://amar-contacts.onrender.com',
   'https://amar-contacts-staging-client.onrender.com',
+  'https://workly.ink',
   'https://contacts.workly.ink',
   'http://10.0.0.103:3000',
 ];
@@ -40,8 +41,8 @@ export const getLocationFromIP = async (ip: string) => {
 };
 
 export const dashboardUrl = 'https://contacts.workly.ink/';
-export const profileUrl = 'https://contacts.workly.ink/';
-export const supportEmail = 'amarcontacts79@gmail.com';
+export const profileUrl = 'https://contacts.workly.ink/accountscenter';
+export const supportEmail = 'worklycontacts@gmail.com';
 
 export const AccountActivityMap: Record<
   ActivityType,
