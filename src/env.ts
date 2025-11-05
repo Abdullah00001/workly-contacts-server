@@ -36,4 +36,7 @@ export const env: IEnvConfig = {
   JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY: getEnvVariable(
     'JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY'
   ),
+  REDIS_HOST: getEnvVariable('REDIS_HOST'),
+  REDIS_PASSWORD: getEnvVariable('REDIS_PASSWORD'),
+  REDIS_PORT: getEnvVariable('REDIS_PORT'),
 };
