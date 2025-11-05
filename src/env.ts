@@ -3,7 +3,6 @@ import { getEnvVariable } from '@/utils/getEnvVariables.utils';
 
 export const env: IEnvConfig = {
   MONGODB_URI: getEnvVariable('MONGODB_URI'),
-  REDIS_URI: getEnvVariable('REDIS_URI'),
   NODE_ENV: getEnvVariable('NODE_ENV'),
   JWT_ACCESS_TOKEN_SECRET_KEY: getEnvVariable('JWT_ACCESS_TOKEN_SECRET_KEY'),
   JWT_REFRESH_TOKEN_SECRET_KEY: getEnvVariable('JWT_REFRESH_TOKEN_SECRET_KEY'),
