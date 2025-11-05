@@ -1,7 +1,7 @@
 {
   "name": "server",
-  "version": "1.5.0",
-  "description": "",
+  "version": "1.6.0",
+  "description": "Workly Contacts is a secure, full-featured contact management system built with Node.js, Express, TypeScript, and MongoDB. It provides OAuth authentication, activity tracking, session management, contact labeling, and import/export capabilities with a modern, modular architecture. Designed for scalability and performance, it serves as a production-ready backend for managing personal and professional contact data efficiently.",
   "main": "./dist/server.js",
   "scripts": {
     "format": "prettier --write \"src/**/*.ts\" \"__tests__/**/*.test.ts\"",
