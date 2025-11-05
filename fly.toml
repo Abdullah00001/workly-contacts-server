@@ -1,0 +1,31 @@
+app = "api-workly-contacts"
+
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[mounts]
+  source="workly_contacts_data"
+  destination="/usr/src/app/public/temp"
+
+[env]
+
+[http_service]
+  internal_port = 8080 
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [http_service.checks]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "5s"
+    path = "/health"
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 25
+    hard_limit = 50
