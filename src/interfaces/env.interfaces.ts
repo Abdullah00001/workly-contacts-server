@@ -1,10 +1,13 @@
 export default interface IEnvConfig {
   MONGODB_URI: string;
-  REDIS_URI: string;
   NODE_ENV: string;
   JWT_ACCESS_TOKEN_SECRET_KEY: string;
   JWT_REFRESH_TOKEN_SECRET_KEY: string;
   JWT_RECOVER_SESSION_TOKEN_SECRET_KEY: string;
+  JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY: string;
+  JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY: string;
+  JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY: string;
+  JWT_ACTIVATION_TOKEN_SECRET_KEY: string;
   SMTP_HOST: string;
   SMTP_PORT: number;
   SMTP_USER: string;
@@ -12,4 +15,14 @@ export default interface IEnvConfig {
   CLOUDINARY_NAME: string;
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET_KEY: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_CLIENT_ID: string;
+  CALLBACK_URL: string;
+  OTP_HASH_SECRET: string;
+  RECAPTCHA_SECRET_KEY: string;
+  CLIENT_BASE_URL: string;
+  SERVER_BASE_URL: string;
+  REDIS_PASSWORD: string;
+  REDIS_PORT: string;
+  REDIS_HOST: string;
 }

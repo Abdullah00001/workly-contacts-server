@@ -1,4 +1,4 @@
-import {
+import IContacts, {
   IBulkChangeTrashStatusPayload,
   IChangeFavoriteStatusPayload,
   IChangeTrashStatusPayload,
@@ -9,13 +9,43 @@ import {
   IFindOneContactPayload,
   ISearchContact,
   IUpdateOneContactPayload,
+  MatchCondition,
+  QueryType,
+  TAddLabel,
+  TBulkInsertContacts,
+  TProcessExportContact,
 } from '@/modules/contacts/contacts.interfaces';
 import Contacts from '@/modules/contacts/contacts.models';
-import mongoose from 'mongoose';
+import Label from '@/modules/label/label.models';
+import User from '@/modules/user/user.models';
+import mongoose, { Types } from 'mongoose';
 
 const ContactsRepositories = {
-  createContact: async (payload: ICreateContactPayload) => {
+  createContact: async ({
+    avatar,
+    birthday,
+    email,
+    firstName,
+    lastName,
+    location,
+    phone,
+    worksAt,
+    userId,
+  }: ICreateContactPayload) => {
     try {
+      const user = await User.findOne({ email: email });
+      const payload = {
+        avatar,
+        birthday,
+        email,
+        firstName,
+        lastName,
+        location,
+        phone,
+        worksAt,
+        userId,
+        linkedUserId: user && user._id,
+      } as IContacts;
       const newContact = new Contacts(payload);
       await newContact.save();
       return newContact;
@@ -48,7 +78,7 @@ const ContactsRepositories = {
         location,
         phone,
         worksAt,
-      } as IUpdateOneContactPayload;
+      } as IContacts;
       const data = await Contacts.findByIdAndUpdate(contactId, payload, {
         new: true,
       });
@@ -141,13 +171,22 @@ const ContactsRepositories = {
     }
   },
   deleteManyContact: async ({ contactIds }: IDeleteManyContactPayload) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-      const [deletedContacts, deletedContactCount] = await Promise.all([
-        Contacts.find({ _id: { $in: contactIds } }, { avatar: 1 }),
-        (await Contacts.deleteMany({ _id: { $in: contactIds } })).deletedCount,
-      ]);
-      return { deletedContacts, deletedContactCount };
+      const deletedContacts = await Contacts.find(
+        { _id: { $in: contactIds } },
+        { avatar: 1 }
+      ).session(session);
+      const result = await Contacts.deleteMany({
+        _id: { $in: contactIds },
+      }).session(session);
+      await session.commitTransaction();
+      session.endSession();
+      return { deletedContacts, deletedContactCount: result.deletedCount };
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       if (error instanceof Error) {
         throw error;
       } else {
@@ -164,19 +203,27 @@ const ContactsRepositories = {
           $project: {
             _id: 1,
             avatar: 1,
-            name: {
-              $concat: [
-                { $ifNull: ['$firstName', ''] },
-                ' ',
-                { $ifNull: ['$lastName', ''] },
-              ],
-            },
+            firstName: 1,
+            lastName: 1,
             isTrashed: 1,
             isFavorite: 1,
             email: 1,
             phone: 1,
+            location: 1,
+            worksAt: 1,
+            labels: 1,
           },
         },
+        {
+          $addFields: {
+            sortKey: {
+              $toLower: {
+                $ifNull: ['$firstName', '$lastName'],
+              },
+            },
+          },
+        },
+        { $sort: { sortKey: 1 } },
       ]);
     } catch (error) {
       if (error instanceof Error) {
@@ -197,19 +244,27 @@ const ContactsRepositories = {
           $project: {
             _id: 1,
             avatar: 1,
-            name: {
-              $concat: [
-                { $ifNull: ['$firstName', ''] },
-                ' ',
-                { $ifNull: ['$lastName', ''] },
-              ],
-            },
+            firstName: 1,
+            lastName: 1,
             isTrashed: 1,
             isFavorite: 1,
             email: 1,
             phone: 1,
+            location: 1,
+            worksAt: 1,
+            labels: 1,
           },
         },
+        {
+          $addFields: {
+            sortKey: {
+              $toLower: {
+                $ifNull: ['$firstName', '$lastName'],
+              },
+            },
+          },
+        },
+        { $sort: { sortKey: 1 } },
       ]);
     } catch (error) {
       if (error instanceof Error) {
@@ -227,16 +282,16 @@ const ContactsRepositories = {
           $match: { userId: objectUserId, isTrashed: true },
         },
         {
+          $sort: {
+            trashedAt: -1,
+          },
+        },
+        {
           $project: {
             _id: 1,
             avatar: 1,
-            name: {
-              $concat: [
-                { $ifNull: ['$firstName', ''] },
-                ' ',
-                { $ifNull: ['$lastName', ''] },
-              ],
-            },
+            firstName: 1,
+            lastName: 1,
             isTrashed: 1,
             trashedAt: 1,
           },
@@ -251,33 +306,79 @@ const ContactsRepositories = {
     }
   },
   searchContact: async ({ query, userId }: ISearchContact) => {
-    const regex = new RegExp(query, 'i');
     const objectUserId = new mongoose.Types.ObjectId(userId);
+    const escapeRegex = (str: string) => {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+    // Detect query type
+    const detectQueryType = (q: string): QueryType => {
+      if (q.includes('@')) return 'email';
+      if (/^[\d\+\-\s()]+$/.test(q)) return 'phone';
+      return 'name';
+    };
+    const queryType = detectQueryType(query);
+    const escapedQuery = escapeRegex(query);
+    // Split query into words and create regex for each
+    const words = query.trim().split(/\s+/);
+    const regexArray = words.map((word) => new RegExp(escapeRegex(word), 'i'));
     try {
+      const orConditions: MatchCondition[] = [];
+
+      // Build conditions based on query type
+      if (queryType === 'email') {
+        orConditions.push({ email: new RegExp(`^${escapedQuery}$`, 'i') });
+      } else if (queryType === 'phone') {
+        orConditions.push(
+          { 'phone.number': new RegExp(escapedQuery, 'i') },
+          { 'phone.number': new RegExp(query.replace(/\D/g, ''), 'i') }
+        );
+      } else {
+        // Name search
+        const words = query.trim().split(/\s+/);
+
+        // Match individual name fields
+        orConditions.push(
+          { firstName: new RegExp(escapedQuery, 'i') },
+          { lastName: new RegExp(escapedQuery, 'i') }
+        );
+
+        // For multi-word queries, add full name matching
+        if (words.length > 1) {
+          const nameConditions: MatchCondition[] = words.map((word) => ({
+            fullName: new RegExp(escapeRegex(word), 'i'),
+          }));
+          orConditions.push({ $and: nameConditions });
+        }
+      }
       return await Contacts.aggregate([
         {
           $match: {
             userId: objectUserId,
             isTrashed: false,
-            $or: [
-              { firstName: regex },
-              { lastName: regex },
-              { email: regex },
-              { phone: regex },
-            ],
           },
         },
         {
-          $project: {
-            _id: 1,
-            avatar: 1,
-            name: {
+          $addFields: {
+            fullName: {
               $concat: [
                 { $ifNull: ['$firstName', ''] },
                 ' ',
                 { $ifNull: ['$lastName', ''] },
               ],
             },
+          },
+        },
+        {
+          $match: {
+            $or: orConditions,
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            avatar: 1,
+            firstName: 1,
+            lastName: 1,
             email: 1,
           },
         },
@@ -322,15 +423,136 @@ const ContactsRepositories = {
     }
   },
   emptyTrash: async ({ userId }: IDeleteManyContactPayload) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-      const [contacts, deleteResponse] = await Promise.all([
-        Contacts.find({ userId, isTrashed: true }),
-        Contacts.deleteMany({ userId, isTrashed: true }),
-      ]);
+      const contacts = await Contacts.find({ userId, isTrashed: true }).session(
+        session
+      );
+      const deleteResponse = await Contacts.deleteMany({
+        userId,
+        isTrashed: true,
+      }).session(session);
+      await session.commitTransaction();
+      session.endSession();
       return { contacts, deletedCount: deleteResponse.deletedCount };
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       if (error instanceof Error) throw error;
       throw new Error('Unknown Error Occurred In Empty Trash Query');
+    }
+  },
+  bulkInsertContacts: async ({ contacts }: TBulkInsertContacts) => {
+    try {
+      const writContact = await Contacts.insertMany(contacts);
+      return writContact;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error('Unknown Error Occurred In Bulk Insert Contact Query');
+    }
+  },
+  exportContact: async ({ contactIds, userId }: TProcessExportContact) => {
+    try {
+      const contacts = await Contacts.find(
+        {
+          userId,
+          _id: { $in: contactIds },
+        },
+        {
+          firstName: 1,
+          lastName: 1,
+          location: 1,
+          phone: 1,
+          email: 1,
+          birthday: 1,
+          worksAt: 1,
+          _id: 0,
+        }
+      ).lean();
+      return contacts;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error('Unknown Error Occurred In Bulk Insert Contact Query');
+    }
+  },
+  addLabelToContacts: async ({ labelUpdateTree, userId }: TAddLabel) => {
+    try {
+      const bulkOps = labelUpdateTree.map(({ contactId, labelIds }) => ({
+        updateOne: {
+          filter: { _id: contactId, userId },
+          update: { $set: { labels: labelIds } },
+        },
+      }));
+      await Contacts.bulkWrite(bulkOps);
+      return;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error(
+        'Unknown Error Occurred In Bulk Add Label To Contact Query'
+      );
+    }
+  },
+  findContactsByLabel: async ({
+    labelId,
+    userId,
+  }: {
+    labelId: Types.ObjectId;
+    userId: Types.ObjectId;
+  }) => {
+    try {
+      const result = await Label.aggregate([
+        { $match: { _id: new Types.ObjectId(labelId), createdBy: userId } }, // match label created by user
+        {
+          $lookup: {
+            from: 'contacts', // MongoDB collection name
+            let: { labelId: '$_id', creatorId: '$createdBy' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $in: ['$$labelId', '$labels'] }, // contact has this label
+                      { $eq: ['$userId', '$$creatorId'] }, // contact belongs to same user
+                      { $eq: ['$isTrashed', false] }, // only non-trashed contacts
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'labelContacts',
+          },
+        },
+        {
+          $set: {
+            labelContacts: {
+              $sortArray: {
+                input: '$labelContacts',
+                sortBy: {
+                  firstName: 1,
+                  lastName: 1,
+                },
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            labelName: 1, // label name
+            labelContacts: 1, // contacts array
+          },
+        },
+      ]);
+
+      return (
+        result[0] || { _id: labelId, name: '', color: '', labelContacts: [] }
+      );
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error(
+        'Unknown Error Occurred In Bulk Add Label To Contact Query'
+      );
     }
   },
 };

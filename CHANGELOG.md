@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.6.0] - 2025-11-05
+
+### ✨ Added
+
+- **Import & Export Contacts**: Introduced endpoints to import and export contacts with full validation and structured file handling.
+- **Labels Management System**: Added CRUD operations for labels and enabled contact labeling with alphabetical sorting support.
+- **Security & Password Module**: Implemented activity tracking, account overview, password management, and active session control.
+- **Account Automation**: Added automated workflow for account deletion and enforced password creation for OAuth users.
+- **Session Healing Middleware**: Added self-healing logic in `checkSessionLimit` middleware to automatically clean expired sessions.
+
+### ♻️ Changed
+
+- Refactored authentication and JWT utilities for better security and stability across login, refresh, and session handling.
+- Optimized contact schema and refactored user model to support new fields and consistent structure.
+- Improved search, feedback, and export logic for smoother frontend integration.
+
+### 🧹 Fixed
+
+- Fixed inconsistent refresh token expiration for both local and OAuth logins.
+- Resolved profile picture update validation and schema mismatch issues.
+- Fixed background job and circular dependency problems in activity queue.
+- Addressed search, import validation, and file handling bugs that affected contact operations.
+
+---
+
+✅ This release delivers the **final feature milestone for Workly Contacts**, completing the v1 roadmap with a strong focus on **security, data portability, and session management**.
+
+🔜 Future updates will emphasize **performance tuning**, **stability**, and **preparation for production scaling**.
+
 ## [v1.5.0] - 2025-07-04
 
 ### ✨ Added

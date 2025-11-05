@@ -1,5 +1,13 @@
 import { model, Model, Schema } from 'mongoose';
-import IProfile from './profile.interfaces';
+import IProfile, { TLocation } from '@/modules/profile/profile.interfaces';
+
+const LocationSchema = new Schema<TLocation>(
+  {
+    home: { type: String, default: null },
+    work: { type: String, default: null },
+  },
+  { _id: false }
+);
 
 const ProfileSchema = new Schema<IProfile>(
   {
@@ -11,11 +19,8 @@ const ProfileSchema = new Schema<IProfile>(
     },
     bio: { type: String, default: null },
     dateOfBirth: { type: String, default: null },
-    location: { type: String, default: null },
-    worksAt: {
-      company: { type: String, default: null },
-      position: { type: String, default: null },
-    },
+    location: LocationSchema,
+    gender: { type: String, default: null },
   },
   { timestamps: true }
 );

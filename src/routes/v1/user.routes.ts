@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import UserControllers from '@/modules/user/user.controllers';
 import UserMiddlewares from '@/modules/user/user.middlewares';
+import passport from 'passport';
+import { env } from '@/env';
 
+const { CLIENT_BASE_URL } = env;
 const {
   isSignupUserExist,
   checkOtp,
@@ -15,15 +18,28 @@ const {
   checkR_stp1Token,
   checkR_stp2Token,
   checkR_stp3Token,
+  otpRateLimiter,
+  resendOtpEmailCoolDown,
+  checkActivationToken,
+  checkIpBlackList,
+  checkLoginAttempts,
+  checkActiveToken,
+  checkChangePasswordPageToken,
+  checkSession,
+  checkSessionsLimit,
+  checkClearDevicePageToken,
 } = UserMiddlewares;
 const {
   handleSignUp,
   handleVerifyUser,
   handleLogin,
+  handleAccountActivation,
   handleCheck,
   handleRefreshTokens,
   handleLogout,
   handleResend,
+  handleCheckResendStatus,
+  handleCheckClearDevicePageToken,
   handleFindUser,
   handleSentRecoverOtp,
   handleVerifyRecoverOtp,
@@ -32,44 +48,168 @@ const {
   handleCheckR_Stp1,
   handleCheckR_Stp2,
   handleCheckR_Stp3,
+  handleProcessOAuthCallback,
+  handleCheckChangePasswordPageToken,
+  handleChangePasswordAndAccountActivation,
+  handleCheckActivationTokenValidity,
+  handleRetrieveSessionsForClearDevice,
+  handleClearDeviceAndLogin,
+  handleRecoverUserInfo,
+  handleSecurityOverview,
+  handleActiveSession,
+  handleRecentActivity,
+  handleSessionRemove,
+  handleForceLogout,
+  handleRetrieveActivity,
+  handleRetrieveActivityDetails,
+  handleCreatePassword,
 } = UserControllers;
 
 const router = Router();
 
-router.route('/auth/signup').post(isSignupUserExist, handleSignUp);
-router.route('/auth/verify').post(isUserExist, checkOtp, handleVerifyUser);
-router.route('/auth/resend').post(isUserExist, handleResend);
+// Signup Route
+router
+  .route('/auth/signup')
+  .post(checkIpBlackList, isSignupUserExist, handleSignUp);
+// Verify Email Page Protection Endpoint
+router
+  .route('/auth/verify/check')
+  .get(checkActivationToken, handleCheckActivationTokenValidity);
+// Verify User Signup User Email With Otp Route
+router
+  .route('/auth/verify')
+  .post(checkActivationToken, otpRateLimiter, checkOtp, handleVerifyUser);
+// Resend Otp For Signup User Email Route
+router
+  .route('/auth/resend')
+  .post(checkActivationToken, resendOtpEmailCoolDown, handleResend);
+// check resend otp timer for sync with client
+router
+  .route('/auth/resend/status')
+  .get(checkActivationToken, handleCheckResendStatus);
+// Login Route
 router
   .route('/auth/login')
-  .post(isUserExistAndVerified, checkPassword, handleLogin);
-router.route('/auth/check').post(checkAccessToken, handleCheck);
-router.route('/auth/refresh').post(checkRefreshToken, handleRefreshTokens);
-router.route('/auth/logout').post(checkRefreshToken, handleLogout);
+  .post(
+    checkIpBlackList,
+    checkLoginAttempts,
+    isUserExistAndVerified,
+    checkPassword,
+    checkSessionsLimit,
+    handleLogin
+  );
+// clear device page token check
+router
+  .route('/auth/check-clear-device')
+  .get(checkClearDevicePageToken, handleCheckClearDevicePageToken);
+// Retrieve Sessions For Clear Device
+router
+  .route('/auth/clear-device/sessions')
+  .get(checkClearDevicePageToken, handleRetrieveSessionsForClearDevice);
+// clear device and login
+router
+  .route('/auth/clear-device')
+  .post(checkClearDevicePageToken, handleClearDeviceAndLogin);
+// Check Is User Authenticate Or Not Using AccessToken Route
+router.route('/auth/check').get(checkAccessToken, checkSession, handleCheck);
+// Refresh User AccessToken Based On RefreshToken And Session
+router
+  .route('/auth/refresh')
+  .post(checkRefreshToken, checkSession, handleRefreshTokens);
+// Logout Route
+router.route('/auth/logout').post(checkAccessToken, checkSession, handleLogout);
+router
+  .route('/auth/google')
+  .get(passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.route('/google/callback').get(
+  passport.authenticate('google', {
+    failureRedirect: `${CLIENT_BASE_URL}/login?error=user_not_found`,
+    session: false,
+  }),
+  checkSessionsLimit,
+  handleProcessOAuthCallback
+);
+
+router
+  .route('/auth/create-password')
+  .post(checkAccessToken, checkSession, handleCreatePassword);
+
+// These Routes Are For Account Unlock
+router
+  .route('/auth/active/:uuid')
+  .get(checkActiveToken, handleAccountActivation);
+router
+  .route('/auth/active/check')
+  .get(checkChangePasswordPageToken, handleCheckChangePasswordPageToken);
+router
+  .route('/auth/active/change/:uuid')
+  .post(checkChangePasswordPageToken, handleChangePasswordAndAccountActivation);
+
 router
   .route('/auth/recover/check/stp1')
-  .post(checkR_stp1Token, handleCheckR_Stp1);
+  .get(checkR_stp1Token, handleCheckR_Stp1);
+
 router
   .route('/auth/recover/check/stp2')
-  .post(checkR_stp2Token, handleCheckR_Stp2);
+  .get(checkR_stp2Token, handleCheckR_Stp2);
 router
   .route('/auth/recover/check/stp3')
-  .post(checkR_stp3Token, handleCheckR_Stp3);
+  .get(checkR_stp3Token, handleCheckR_Stp3);
 router
   .route('/auth/recover/find')
   .post(isUserExist, isUserVerified, handleFindUser);
+router.route('/auth/recover/user').get(checkR_stp1Token, handleRecoverUserInfo);
 router
   .route('/auth/recover/sent-otp')
   .post(checkR_stp1Token, handleSentRecoverOtp);
 router
   .route('/auth/recover/verify')
-  .post(checkR_stp2Token, checkRecoverOtp, handleVerifyRecoverOtp);
+  .post(
+    checkR_stp2Token,
+    otpRateLimiter,
+    checkRecoverOtp,
+    handleVerifyRecoverOtp
+  );
 
 router
-  .route('/auth/recover/resent')
-  .post(checkR_stp2Token, handleResendRecoverOtp);
+  .route('/auth/recover/resend')
+  .post(checkR_stp2Token, resendOtpEmailCoolDown, handleResendRecoverOtp);
+
+router
+  .route('/auth/recover/resend/status')
+  .get(checkR_stp2Token, handleCheckResendStatus);
 
 router
   .route('/auth/recover/reset')
   .patch(checkR_stp3Token, handleResetPassword);
+
+// Account Center
+
+router
+  .route('/auth/security-overview')
+  .get(checkAccessToken, checkSession, handleSecurityOverview);
+
+router
+  .route('/auth/active-sessions')
+  .get(checkAccessToken, checkSession, handleActiveSession);
+
+router
+  .route('/activity')
+  .get(checkAccessToken, checkSession, handleRetrieveActivity);
+
+router
+  .route('/activity/:id')
+  .get(checkAccessToken, checkSession, handleRetrieveActivityDetails);
+
+router
+  .route('/auth/activity/recent')
+  .get(checkAccessToken, checkSession, handleRecentActivity);
+
+router
+  .route('/auth/session-remove')
+  .post(checkAccessToken, checkSession, handleSessionRemove);
+
+router.route('/auth/force-logout').post(handleForceLogout);
 
 export default router;

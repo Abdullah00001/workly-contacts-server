@@ -30,7 +30,7 @@
     # COPY --from=builder /usr/src/app/public ./public
     
     # Expose the app port
-    EXPOSE 3000
+    EXPOSE 8080
     
     # Define the startup command
     CMD ["node", "dist/server.js"]

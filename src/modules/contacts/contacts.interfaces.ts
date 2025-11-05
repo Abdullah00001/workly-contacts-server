@@ -6,6 +6,11 @@ export interface IWorksAt {
   jobTitle: string;
 }
 
+export interface IPhone {
+  countryCode: string;
+  number: string;
+}
+
 export interface ILocation {
   country: string;
   city: string;
@@ -29,16 +34,19 @@ interface IContacts {
   createdAt?: Date;
   updatedAt?: Date;
   avatar: IImage;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  labels: Types.ObjectId[];
+  name: string;
   email: string;
-  phone: string;
+  phone: IPhone;
   worksAt: IWorksAt;
   location: ILocation;
   birthday: IBirthDate;
   isFavorite: boolean;
   isTrashed: boolean;
   trashedAt: Date;
+  linkedUserId: Types.ObjectId;
   userId: Types.ObjectId;
 }
 
@@ -84,8 +92,9 @@ export interface IUpdateOneContactPayload {
   avatar?: TImage;
   firstName?: string;
   lastName?: string;
+  name?: string;
   email?: string;
-  phone?: string;
+  phone?: IPhone;
   worksAt?: IWorksAt;
   location?: ILocation;
   birthday?: IBirthDate;
@@ -102,7 +111,7 @@ export interface ICreateContactPayload {
   firstName?: string;
   lastName?: string;
   email?: string;
-  phone?: string;
+  phone?: IPhone;
   worksAt?: IWorksAt;
   location?: ILocation;
   birthday?: IBirthDate;
@@ -120,5 +129,120 @@ export interface ISearchContact {
   query: string;
   userId: Types.ObjectId;
 }
+
+export type TProcessImportContact = {
+  fileName: string;
+  userId: Types.ObjectId;
+};
+
+export type TContactPayload = {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: {
+    countryCode: string | null;
+    number: string | null;
+  };
+  birthday: {
+    day: number | null;
+    month: string | null;
+    year: number | null;
+  };
+  location: {
+    city: string | null;
+    country: string | null;
+    postCode: number | string | null;
+    streetAddress: string | null;
+  };
+  worksAt: {
+    companyName: string | null;
+    jobTitle: string | null;
+  };
+  userId: Types.ObjectId;
+};
+
+export type TCsvFormat = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneCountryCode: string;
+  phoneNumber: string;
+  birthdayDate: number;
+  birthdayMonth: number;
+  birthdayYear: number;
+  addressStreet: string;
+  addressCity: string;
+  addressCountry: string;
+  addressPostCode: number;
+  organizationName: string;
+  organizationPosition: string;
+};
+
+export type TVCardFormat = {
+  VERSION: string;
+  FN: string;
+  N: string;
+  EMAIL: string;
+  TEL: string;
+  BDAY: string;
+  ADR: string;
+  ORG: string;
+  TITLE: string;
+};
+
+export type TBulkInsertContacts = {
+  contacts: TContactPayload[];
+};
+
+// Type definitions
+export interface CSVContactRow {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  countryCode?: string;
+  birthMonth?: string;
+  birthDate?: string;
+  birthYear?: string;
+  [key: string]: string | undefined;
+}
+
+export interface ContactValidationError {
+  row?: number;
+  card?: number;
+  field: string;
+  message: string;
+}
+
+export interface PhoneValidation {
+  phone?: string;
+  countryCode?: string;
+}
+
+export interface BirthdayValidation {
+  birthMonth?: string;
+  birthDate?: string;
+  birthYear?: string;
+}
+
+export type TProcessExportContact = {
+  userId: Types.ObjectId;
+  contactIds: string[] | Types.ObjectId[];
+};
+
+export type QueryType = 'email' | 'phone' | 'name';
+
+export interface MatchCondition {
+  [key: string]: any;
+}
+
+export type TLabelLeaf = {
+  contactId: Types.ObjectId;
+  labelIds: Types.ObjectId[];
+};
+
+export type TAddLabel = {
+  labelUpdateTree: TLabelLeaf[];
+  userId: Types.ObjectId;
+};
 
 export default IContacts;

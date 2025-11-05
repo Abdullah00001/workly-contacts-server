@@ -1,7 +1,6 @@
 import JwtUtils from '../../../src/utils/jwt.utils';
 import { TokenPayload } from '../../../src/interfaces/jwtPayload.interfaces';
-import mongoose from 'mongoose';
-import { JsonWebTokenError, JwtPayload } from 'jsonwebtoken';
+import { JsonWebTokenError } from 'jsonwebtoken';
 
 const {
   generateAccessToken,
@@ -13,10 +12,8 @@ const {
 } = JwtUtils;
 
 const mockPayload: TokenPayload = {
-  email: 'test@example.com',
-  isVerified: true,
-  name: 'John Doe',
-  userId: new mongoose.Types.ObjectId(),
+  sub: '690a1f6e5db1dc990cd22e8c',
+  sid: '94133faf-69f8-4831-88da-25a31e7c3f45',
 };
 
 const mockToken =
@@ -69,7 +66,7 @@ describe('JwtUtils', () => {
     it('it should be return decoded payload when token is verified', () => {
       const token = generateAccessToken(mockPayload);
       const result = verifyAccessToken(token) as TokenPayload;
-      expect(result.email).toBe(mockPayload.email);
+      expect(result.sub).toBe(mockPayload.sub);
     });
   });
 
@@ -85,7 +82,7 @@ describe('JwtUtils', () => {
     it('should return decoded payload when token is verified', () => {
       const token = generateRefreshToken(mockPayload);
       const result = verifyRefreshToken(token) as TokenPayload;
-      expect(result.email).toBe(mockPayload.email);
+      expect(result.sub).toBe(mockPayload.sub);
     });
   });
 
@@ -101,7 +98,7 @@ describe('JwtUtils', () => {
     it('should return decoded payload when token is verified', () => {
       const token = generateRecoverToken(mockPayload);
       const result = verifyRecoverToken(token) as TokenPayload;
-      expect(result.email).toBe(mockPayload.email);
+      expect(result.sub).toBe(mockPayload.sub);
     });
   });
 });
