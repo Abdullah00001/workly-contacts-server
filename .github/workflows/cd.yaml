@@ -40,6 +40,6 @@ jobs:
           fly deploy \
             --app api-workly-contacts \
             --image abdullah00001/workly-contacts:latest \
-            --region bom \
+            --primary-region bom \
             --remote-only \
             --yes
