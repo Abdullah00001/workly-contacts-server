@@ -42,11 +42,11 @@ const CloudinaryConfigs = {
       return null;
     }
   },
-  uploadAvatar: async (url: string | null) => {
-    if (!url) return { publicId: null, url: null };
+  uploadAvatar: async (
+    url: string
+  ): Promise<{ publicId: string | null; url: string | null }> => {
     try {
-      const response = await axios.get(url, { responseType: 'arraybuffer' });
-      const buffer = Buffer.from(response.data, 'binary');
+      const response = await axios.get(url, { responseType: 'stream' });
       return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
@@ -64,7 +64,12 @@ const CloudinaryConfigs = {
             }
           }
         );
-        uploadStream.end(buffer);
+        response.data.pipe(uploadStream);
+        response.data.on('error', (error: Error) => {
+          logger.error('Google avatar download stream error:', error);
+          uploadStream.destroy(); // Stop the upload if download fails
+          reject(error);
+        });
       });
     } catch (error) {
       logger.error('Google avatar upload failed:', error);

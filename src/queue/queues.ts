@@ -8,3 +8,6 @@ export const ActivityQueue = new Queue('activity-queue', {
 export const AccountDeleteQueue = new Queue('account-deletion-queue', {
   connection: redisClient,
 });
+export const AvatarUploadQueue = new Queue('account-deletion-queue', {
+  connection: redisClient,
+});

@@ -8,6 +8,8 @@ import {
 } from '@/modules/user/user.enums';
 import { IUserPayload, TAccountStatus } from '@/modules/user/user.interfaces';
 import UserRepositories from '@/modules/user/user.repositories';
+import AvatarUploadQueueJob from '@/queue/jobs/avatarUpload.jobs';
+import { Types } from 'mongoose';
 import passport from 'passport';
 import {
   Strategy as GoogleStrategy,
@@ -16,7 +18,6 @@ import {
 } from 'passport-google-oauth20';
 
 const { CALLBACK_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = env;
-const { uploadAvatar } = CloudinaryConfigs;
 const { findUserByEmail, createNewUser } = UserRepositories;
 
 /**
@@ -47,10 +48,10 @@ passport.use(
       const user = await findUserByEmail(email as string);
       if (!user) {
         const googleId: string = profile.id;
-        const avatar = await uploadAvatar(profile.photos?.[0]?.value || null);
+        const avatar = { url: null, publicId: null };
         const name: string = profile.displayName;
         const newUser: IUserPayload = {
-          avatar: avatar as IImage,
+          avatar: avatar,
           email,
           password: { secret: null, change_at: null },
           name,
@@ -62,7 +63,14 @@ passport.use(
             lockedAt: null,
           } as TAccountStatus,
         };
+
         const createdUser = await createNewUser(newUser);
+        if (profile.photos?.[0]?.value) {
+          await AvatarUploadQueueJob({
+            userId: createdUser?._id as Types.ObjectId,
+            url: profile.photos?.[0]?.value,
+          });
+        }
         return done(null, {
           user: createdUser,
           activity: ActivityType.SIGNUP_SUCCESS,

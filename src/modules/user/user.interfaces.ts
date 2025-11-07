@@ -153,7 +153,7 @@ export interface IUserPayload {
   email?: string;
   password?: TPassword;
   isVerified?: boolean;
-  avatar?: IImage;
+  avatar?: TAvatar;
   userId?: Types.ObjectId;
   phone?: string;
   otp?: string;
