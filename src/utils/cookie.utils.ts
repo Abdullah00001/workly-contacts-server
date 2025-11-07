@@ -6,8 +6,9 @@ const CookieUtils = {
     const option: CookieOptions = {
       httpOnly: true,
       secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      sameSite: env.NODE_ENV === 'production' ? 'lax' : 'lax',
       path: '/',
+      domain: env.NODE_ENV === 'production' ? '.workly.ink' : 'localhost',
     };
     const match = expiresIn.match(/^(\d+)(ms|s|m|h|d)$/);
     if (!match) throw new Error('Invalid expiresIn format');
