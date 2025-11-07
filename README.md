@@ -271,6 +271,7 @@ The API documentation is available via Swagger UI when running the application:
    ├── swagger.yaml
    ├── __tests__
    ├── tsconfig.json
+   ├── docs/
    ├── public/
    │   └── temp/
    ├── scripts
