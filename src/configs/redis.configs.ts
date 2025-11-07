@@ -1,10 +1,10 @@
 import { Redis } from 'ioredis';
 import { env } from '../env';
 
-const redisClient = new Redis(env.REDIS_URI,{
-  // host: env.REDIS_HOST,
-  // password: env.REDIS_PASSWORD,
-  // port: Number(env.REDIS_PORT) || 6379,
+const redisClient = new Redis({
+  host: env.REDIS_HOST,
+  password: env.REDIS_PASSWORD,
+  port: Number(env.REDIS_PORT) || 6379,
   maxRetriesPerRequest: null,
   lazyConnect: false,
 });
