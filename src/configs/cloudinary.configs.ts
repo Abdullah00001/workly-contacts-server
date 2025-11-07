@@ -22,7 +22,7 @@ const CloudinaryConfigs = {
       }
       const cloudinaryResponse = await cloudinary.uploader.upload(imagePath, {
         resource_type: 'auto',
-        folder: 'amarcontacts',
+        folder: 'worklycontacts',
       });
       fs.unlinkSync(imagePath);
       return {
@@ -51,7 +51,7 @@ const CloudinaryConfigs = {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             resource_type: 'auto',
-            folder: 'amarcontacts',
+            folder: 'worklycontacts',
           },
           (error, result) => {
             if (error) {

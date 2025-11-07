@@ -4,36 +4,42 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.4] - 2025-11-07
+
+### Fixed
+
+- **Avatar Uploads:** Fixed a critical bug where the `AvatarUploadQueue` was initialized with the wrong queue name (`account-deletion-queue` instead of `avatar-upload-queue`). This mismatch prevented the avatar worker from ever picking up or processing jobs. The queue name has been corrected, and background avatar uploads now function as intended.
+
 ## [1.6.3] - 2025-11-07
 
 ### Fixed
 
-* **Critical Stability:** Fixed a server crash in the Google OAuth flow. An unhandled `E11000` (duplicate key) database error was crashing the application when a second OAuth user (with a `null` password) attempted to sign up. The Passport strategy is now wrapped in a `try...catch` block to safely handle this and other database errors, preventing the server from restarting.
+- **Critical Stability:** Fixed a server crash in the Google OAuth flow. An unhandled `E11000` (duplicate key) database error was crashing the application when a second OAuth user (with a `null` password) attempted to sign up. The Passport strategy is now wrapped in a `try...catch` block to safely handle this and other database errors, preventing the server from restarting.
 
 ## [1.6.2] - 2025-11-07
 
 ### Fixed
 
-* **Critical Stability:** Resolved a critical bug causing frequent machine restarts (OOM crashes) on the Google OAuth signup flow. The memory-intensive avatar upload is no longer handled in the main application thread.
-* **Performance:** Fixed a severe performance bottleneck where the Google OAuth signup endpoint would block for 7+ seconds. The response time is now near-instantaneous.
+- **Critical Stability:** Resolved a critical bug causing frequent machine restarts (OOM crashes) on the Google OAuth signup flow. The memory-intensive avatar upload is no longer handled in the main application thread.
+- **Performance:** Fixed a severe performance bottleneck where the Google OAuth signup endpoint would block for 7+ seconds. The response time is now near-instantaneous.
 
 ### Added
 
-* **Avatar Upload Queue:** Introduced a new `AvatarUploadQueue` (BullMQ) to process avatar uploads asynchronously in the background.
-* **Background Worker:** Added a new worker process to consume the `AvatarUploadQueue`. This worker is responsible for fetching the avatar from Google (using a memory-safe stream) and uploading it to Cloudinary.
-* **Job Resilience:** The new queue job is configured to retry 3 times with exponential backoff, improving the success rate of avatar uploads during temporary network or API failures.
+- **Avatar Upload Queue:** Introduced a new `AvatarUploadQueue` (BullMQ) to process avatar uploads asynchronously in the background.
+- **Background Worker:** Added a new worker process to consume the `AvatarUploadQueue`. This worker is responsible for fetching the avatar from Google (using a memory-safe stream) and uploading it to Cloudinary.
+- **Job Resilience:** The new queue job is configured to retry 3 times with exponential backoff, improving the success rate of avatar uploads during temporary network or API failures.
 
 ### Changed
 
-* **Google OAuth Flow:** The `passport-google-oauth20` strategy no longer waits for the avatar upload. It now creates the user with a `null` avatar and enqueues the background job.
+- **Google OAuth Flow:** The `passport-google-oauth20` strategy no longer waits for the avatar upload. It now creates the user with a `null` avatar and enqueues the background job.
 
 ## [v1.6.1] - 2025-11-07
 
 ### 🔧 Fixed
 
--   **Deployment Pipeline**: Resolved a critical error in the `CONTINUOUS DELIVERY AND DEPLOYMENT` workflow that was causing all automated deployments to fail. The job was incorrectly using the `--region` flag in the `fly deploy` command, which is not a valid flag. This has been corrected to the proper `--primary-region` flag, ensuring the pre-built Docker image is deployed to the correct region (`bom`) and restoring the automated deployment pipeline to a healthy state.
+- **Deployment Pipeline**: Resolved a critical error in the `CONTINUOUS DELIVERY AND DEPLOYMENT` workflow that was causing all automated deployments to fail. The job was incorrectly using the `--region` flag in the `fly deploy` command, which is not a valid flag. This has been corrected to the proper `--primary-region` flag, ensuring the pre-built Docker image is deployed to the correct region (`bom`) and restoring the automated deployment pipeline to a healthy state.
 
--   **Production Cookies**: Addressed a significant bug where server-sent cookies (like auth tokens) were not being set on the browser in the production environment. This was resolved by explicitly setting the `domain: '.workly.ink'` attribute in the cookie options. This change allows the cookie to be shared across all subdomains (e.g., `api.workly.ink` and `app.workly.ink`), which was the root cause of the issue. The `sameSite` policy for production was also updated from `none` to `lax` for improved security and browser compatibility.
+- **Production Cookies**: Addressed a significant bug where server-sent cookies (like auth tokens) were not being set on the browser in the production environment. This was resolved by explicitly setting the `domain: '.workly.ink'` attribute in the cookie options. This change allows the cookie to be shared across all subdomains (e.g., `api.workly.ink` and `app.workly.ink`), which was the root cause of the issue. The `sameSite` policy for production was also updated from `none` to `lax` for improved security and browser compatibility.
 
 ## [v1.6.0] - 2025-11-05
 
