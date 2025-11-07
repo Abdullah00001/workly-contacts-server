@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.3] - 2025-11-07
+
+### Fixed
+
+* **Critical Stability:** Fixed a server crash in the Google OAuth flow. An unhandled `E11000` (duplicate key) database error was crashing the application when a second OAuth user (with a `null` password) attempted to sign up. The Passport strategy is now wrapped in a `try...catch` block to safely handle this and other database errors, preventing the server from restarting.
+
 ## [1.6.2] - 2025-11-07
 
 ### Fixed
