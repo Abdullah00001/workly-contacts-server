@@ -351,8 +351,8 @@ If you encounter any problems or have questions, please:
 
 ### Documentation
 
-- 📖 [Installation Guide](./docs/INSTALLATION.md) - Set up development environment
-- 🚀 [Deployment Guide](./docs/DEPLOYMENT.md) - Deploy to production
+- 📖 [Installation Guide](./docs/DEVELOPMENT_SETUP.md) - Set up development environment
+- 🚀 [Deployment Guide](./docs/PRODUCTION_DEPLOYEMENT.md) - Deploy to production
 - 📚 [API Documentation](https://api.contacts.workly.ink/api-docs) - Swagger/OpenAPI docs
 - 🔒 [Security Policy](./SECURITY.md) - Report security vulnerabilities
 - 📝 [Changelog](./CHANGELOG.md) - Version history and updates
