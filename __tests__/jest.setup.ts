@@ -18,6 +18,15 @@ process.env.JWT_REFRESH_TOKEN_SECRET_KEY =
   process.env.JWT_REFRESH_TOKEN_SECRET_KEY || 'test-refresh-secret-key';
 process.env.JWT_RECOVER_SESSION_TOKEN_SECRET_KEY =
   process.env.JWT_RECOVER_SESSION_TOKEN_SECRET_KEY || 'test-recover-secret-key';
+process.env.JWT_ACTIVATION_TOKEN_SECRET_KEY =
+  process.env.JWT_ACTIVATION_TOKEN_SECRET_KEY || 'test-activation-secret-key';
+process.env.JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY =
+  process.env.JWT_CHANGE_PASSWORD_PAGE_TOKEN_SECRET_KEY || 'test-change-password-secret-key';
+process.env.JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY =
+  process.env.JWT_CLEAR_DEVICE_TOKEN_SECRET_KEY || 'test-clear-device-secret-key';
+process.env.JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY =
+  process.env.JWT_ADD_PASSWORD_PAGE_TOKEN_SECRET_KEY || 'test-add-password-secret-key';
+
 
 // SMTP / Email
 process.env.SMTP_HOST = process.env.SMTP_HOST || 'smtp.test.com';
