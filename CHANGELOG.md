@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.2] - 2025-11-07
+
+### Fixed
+
+* **Critical Stability:** Resolved a critical bug causing frequent machine restarts (OOM crashes) on the Google OAuth signup flow. The memory-intensive avatar upload is no longer handled in the main application thread.
+* **Performance:** Fixed a severe performance bottleneck where the Google OAuth signup endpoint would block for 7+ seconds. The response time is now near-instantaneous.
+
+### Added
+
+* **Avatar Upload Queue:** Introduced a new `AvatarUploadQueue` (BullMQ) to process avatar uploads asynchronously in the background.
+* **Background Worker:** Added a new worker process to consume the `AvatarUploadQueue`. This worker is responsible for fetching the avatar from Google (using a memory-safe stream) and uploading it to Cloudinary.
+* **Job Resilience:** The new queue job is configured to retry 3 times with exponential backoff, improving the success rate of avatar uploads during temporary network or API failures.
+
+### Changed
+
+* **Google OAuth Flow:** The `passport-google-oauth20` strategy no longer waits for the avatar upload. It now creates the user with a `null` avatar and enqueues the background job.
+
 ## [v1.6.1] - 2025-11-07
 
 ### 🔧 Fixed
