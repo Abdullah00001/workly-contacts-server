@@ -1,6 +1,6 @@
 import CloudinaryConfigs from '@/configs/cloudinary.configs';
+import logger from '@/configs/logger.configs';
 import { env } from '@/env';
-import { IImage } from '@/modules/contacts/contacts.interfaces';
 import {
   AccountStatus,
   ActivityType,
@@ -44,44 +44,49 @@ passport.use(
       profile: Profile,
       done: VerifyCallback
     ) => {
-      const email = profile.emails?.[0]?.value;
-      const user = await findUserByEmail(email as string);
-      if (!user) {
-        const googleId: string = profile.id;
-        const avatar = { url: null, publicId: null };
-        const name: string = profile.displayName;
-        const newUser: IUserPayload = {
-          avatar: avatar,
-          email,
-          password: { secret: null, change_at: null },
-          name,
-          isVerified: true,
-          provider: AuthType.GOOGLE,
-          googleId,
-          accountStatus: {
-            accountStatus: AccountStatus.ACTIVE,
-            lockedAt: null,
-          } as TAccountStatus,
-        };
+      try {
+        const email = profile.emails?.[0]?.value;
+        const user = await findUserByEmail(email as string);
+        if (!user) {
+          const googleId: string = profile.id;
+          const avatar = { url: null, publicId: null };
+          const name: string = profile.displayName;
+          const newUser: IUserPayload = {
+            avatar: avatar,
+            email,
+            password: { secret: null, change_at: null },
+            name,
+            isVerified: true,
+            provider: AuthType.GOOGLE,
+            googleId,
+            accountStatus: {
+              accountStatus: AccountStatus.ACTIVE,
+              lockedAt: null,
+            } as TAccountStatus,
+          };
 
-        const createdUser = await createNewUser(newUser);
-        if (profile.photos?.[0]?.value) {
-          await AvatarUploadQueueJob({
-            userId: createdUser?._id as Types.ObjectId,
-            url: profile.photos?.[0]?.value,
-          });
+          const createdUser = await createNewUser(newUser);
+          if (profile.photos?.[0]?.value) {
+            await AvatarUploadQueueJob({
+              userId: createdUser?._id as Types.ObjectId,
+              url: profile.photos?.[0]?.value,
+            });
+          }
+          return done(null, {
+            user: createdUser,
+            activity: ActivityType.SIGNUP_SUCCESS,
+            provider: AuthType.GOOGLE,
+          }); // attaches to req.user
         }
         return done(null, {
-          user: createdUser,
-          activity: ActivityType.SIGNUP_SUCCESS,
+          user,
+          activity: ActivityType.LOGIN_SUCCESS,
           provider: AuthType.GOOGLE,
         }); // attaches to req.user
+      } catch (error) {
+        logger.error('Passport Google strategy failed', error);
+        return done(error as Error, undefined);
       }
-      return done(null, {
-        user,
-        activity: ActivityType.LOGIN_SUCCESS,
-        provider: AuthType.GOOGLE,
-      }); // attaches to req.user
     }
   )
 );
