@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.6.1] - 2025-11-07
+
+### 🔧 Fixed
+
+-   **Deployment Pipeline**: Resolved a critical error in the `CONTINUOUS DELIVERY AND DEPLOYMENT` workflow that was causing all automated deployments to fail. The job was incorrectly using the `--region` flag in the `fly deploy` command, which is not a valid flag. This has been corrected to the proper `--primary-region` flag, ensuring the pre-built Docker image is deployed to the correct region (`bom`) and restoring the automated deployment pipeline to a healthy state.
+
+-   **Production Cookies**: Addressed a significant bug where server-sent cookies (like auth tokens) were not being set on the browser in the production environment. This was resolved by explicitly setting the `domain: '.workly.ink'` attribute in the cookie options. This change allows the cookie to be shared across all subdomains (e.g., `api.workly.ink` and `app.workly.ink`), which was the root cause of the issue. The `sameSite` policy for production was also updated from `none` to `lax` for improved security and browser compatibility.
+
 ## [v1.6.0] - 2025-11-05
 
 ### ✨ Added
