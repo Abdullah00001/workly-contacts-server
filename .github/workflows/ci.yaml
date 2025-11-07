@@ -8,67 +8,21 @@ on:
 jobs:
   Lint-and-Test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@v3
+      - name: Setup Nodejs
+        uses: actions/setup-node@v3
         with:
-          node-version: 22.14.0
-
+          node-version: '22.14.0'
       - name: Install Dependencies
         run: npm ci
 
       - name: Format The Code Base
         run: npm run format
-
       - name: Run Lint Command
         run: npm run lint
-
       - name: Run Tests
         run: npm run test
-        env:
-          NODE_ENV: test
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          JWT_ACCESS_TOKEN_SECRET_KEY: ${{ secrets.JWT_ACCESS_TOKEN_SECRET_KEY }}
-          JWT_REFRESH_TOKEN_SECRET_KEY: ${{ secrets.JWT_REFRESH_TOKEN_SECRET_KEY }}
-          JWT_RECOVER_SESSION_TOKEN_SECRET_KEY: ${{ secrets.JWT_RECOVER_SESSION_TOKEN_SECRET_KEY }}
-          CLOUDINARY_NAME: ${{ secrets.CLOUDINARY_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET_KEY: ${{ secrets.CLOUDINARY_API_SECRET_KEY }}
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          REDIS_URI: ${{ secrets.REDIS_URI }}
-          REDIS_HOST: ${{ secrets.REDIS_HOST }}
-          REDIS_PORT: ${{ secrets.REDIS_PORT }}
-          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-          CLIENT_BASE_URL: ${{ secrets.CLIENT_BASE_URL }}
-          SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
-          CALLBACK_URL: ${{ secrets.CALLBACK_URL }}
-          OTP_HASH_SECRET: ${{ secrets.OTP_HASH_SECRET }}
-          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
-
       - name: Run Tests Coverage
         run: npm run test:cov
-        env:
-          NODE_ENV: test
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          JWT_ACCESS_TOKEN_SECRET_KEY: ${{ secrets.JWT_ACCESS_TOKEN_SECRET_KEY }}
-          JWT_REFRESH_TOKEN_SECRET_KEY: ${{ secrets.JWT_REFRESH_TOKEN_SECRET_KEY }}
-          JWT_RECOVER_SESSION_TOKEN_SECRET_KEY: ${{ secrets.JWT_RECOVER_SESSION_TOKEN_SECRET_KEY }}
-          CLOUDINARY_NAME: ${{ secrets.CLOUDINARY_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET_KEY: ${{ secrets.CLOUDINARY_API_SECRET_KEY }}
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          REDIS_URI: ${{ secrets.REDIS_URI }}
-          REDIS_HOST: ${{ secrets.REDIS_HOST }}
-          REDIS_PORT: ${{ secrets.REDIS_PORT }}
-          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-          CLIENT_BASE_URL: ${{ secrets.CLIENT_BASE_URL }}
-          SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
-          CALLBACK_URL: ${{ secrets.CALLBACK_URL }}
-          OTP_HASH_SECRET: ${{ secrets.OTP_HASH_SECRET }}
-          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
